@@ -1,0 +1,18 @@
+Django>=5.0,<6.0
+psycopg2-binary>=2.9
+djangorestframework>=3.14
+djangorestframework-simplejwt>=5.3
+django-cors-headers>=4.3
+channels>=4.0
+daphne>=4.0
+redis>=5.0
+channels_redis>=4.1
+django-environ>=0.11
+Pillow>=10.0
+# For scheduling
+django-q2>=1.6.1
+livekit-api>=0.1.0
+django-cloudinary-storage>=0.3
+firebase-admin>=6.2
+whitenoise>=6.6
+dj-database-url>=2.1

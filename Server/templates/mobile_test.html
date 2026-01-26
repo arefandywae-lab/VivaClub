@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viva Club - Mobile Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f0f2f5;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        input,
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:active {
+            background: #0056b3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #chat-log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #fafafa;
+        }
+
+        .msg {
+            margin-bottom: 5px;
+        }
+
+        .msg b {
+            color: #555;
+        }
+
+        #video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            height: 200px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📱 Viva Club Test (v2)</h1>
+
+    <!-- 1. AUTH -->
+    <div id="auth-section" class="card">
+        <h3>🔐 Login</h3>
+        <input type="text" id="username" placeholder="Username (e.g., patient1)">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <div id="auth-status" style="margin-top: 10px; color: red;"></div>
+    </div>
+
+    <!-- 2. DASHBOARD -->
+    <div id="dashboard-section" class="card hidden">
+        <h3>👋 Hello, <span id="display-name">User</span></h3>
+        <p>Token: <span id="token-preview" style="font-family:monospace; font-size: 10px;">...</span></p>
+
+        <!-- LiveKit -->
+        <hr>
+        <h4>🎥 Video Call (LiveKit)</h4>
+        <input type="text" id="room-name" placeholder="Room Name (e.g., room1)" value="room1">
+        <button onclick="joinVideo()">Join Video Room</button>
+        <div id="video-container">
+            <!-- Videos will appear here -->
+        </div>
+
+        <!-- Chat -->
+        <hr>
+        <h4>💬 Chat (WebSocket)</h4>
+        <div id="chat-log"></div>
+        <input type="text" id="chat-msg" placeholder="Type a message...">
+        <button onclick="sendChat()">Send</button>
+
+        <!-- Data -->
+        <hr>
+        <h4>📅 Appointments</h4>
+        <button onclick="loadSlots()">Refresh Slots</button>
+        <ul id="slot-list"></ul>
+    </div>
+
+    <script>
+        let accessToken = null;
+        let ws = null;
+        let room = null; // LiveKit room
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const res = await fetch('/api/auth/login/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    accessToken = data.access;
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('dashboard-section').classList.remove('hidden');
+                    document.getElementById('display-name').innerText = username;
+                    document.getElementById('token-preview').innerText = accessToken.substring(0, 10) + "...";
+
+                    // Auto connect chat
+                    connectChat(document.getElementById('room-name').value);
+                } else {
+                    document.getElementById('auth-status').innerText = "Login Failed: " + JSON.stringify(data);
+                }
+            } catch (e) {
+                document.getElementById('auth-status').innerText = "Error: " + e;
+            }
+        }
+
+        // --- CHAT ---
+        function connectChat(roomName) {
+            if (!accessToken) {
+                logChat("System", "Error: Not logged in!");
+                return;
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/chat/${roomName}/?token=${accessToken}`;
+
+            console.log("Connecting to:", wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => logChat("System", "✅ Connected to Chat");
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                logChat(data.sender, data.message);
+            };
+            ws.onclose = () => logChat("System", "❌ Disconnected");
+            ws.onerror = (e) => logChat("System", "⚠️ Connection Error");
+        }
+
+        function sendChat() {
+            const msg = document.getElementById('chat-msg').value;
+            if (ws && msg) {
+                ws.send(JSON.stringify({ message: msg }));
+                document.getElementById('chat-msg').value = '';
+            }
+        }
+
+        function logChat(sender, msg) {
+            const div = document.createElement('div');
+            div.className = 'msg';
+            div.innerHTML = `<b>${sender}:</b> ${msg}`;
+            document.getElementById('chat-log').appendChild(div);
+            // scroll down
+            document.getElementById('chat-log').scrollTop = document.getElementById('chat-log').scrollHeight;
+        }
+
+        // --- VIDEO (LiveKit) ---
+        async function joinVideo() {
+            const roomName = document.getElementById('room-name').value;
+
+            // 1. Get Token
+            const res = await fetch('/api/community/livekit/token/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({ room_name: roomName })
+            });
+            const data = await res.json();
+
+            if (!data.token) {
+                alert("Failed to get video token");
+                return;
+            }
+
+            // 2. Connect LiveKit
+            const liveKitUrl = data.url;
+            if (!liveKitUrl || liveKitUrl.includes("your-project")) {
+                alert("⚠️ Please configure LIVEKIT_API_URL in Server/.env first!");
+                return;
+            }
+
+            // FIX: Robust check for UMD global variable
+            const LK = window.LivekitClient || window.LiveKitClient;
+            if (!LK) {
+                alert("LiveKit SDK not loaded yet. Please refresh.");
+                return;
+            }
+
+            room = new LK.Room();
+
+            // Handle tracks
+            room.on(LK.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+                const element = track.attach();
+                document.getElementById('video-container').appendChild(element);
+            });
+
+            await room.connect(liveKitUrl, data.token);
+
+            // Publish local camera/mic
+            await room.localParticipant.enableCameraAndMicrophone();
+            const localVideo = Array.from(room.localParticipant.videoTracks.values())[0].track.attach();
+            document.getElementById('video-container').appendChild(localVideo);
+
+            alert("Joined Video Room!");
+        }
+
+        // --- DATA ---
+        async function loadSlots() {
+            const res = await fetch('/api/bookings/slots/', {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const data = await res.json();
+            const list = document.getElementById('slot-list');
+            list.innerHTML = '';
+            data.forEach(slot => {
+                const li = document.createElement('li');
+                li.innerText = `${slot.start_time} - ${slot.doctor_details.display_name}`;
+                list.appendChild(li);
+            });
+        }
+    </script>
+</body>
+
+</html>

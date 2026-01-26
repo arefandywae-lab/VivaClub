@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # 1. Database (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=vivaclub
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secret
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis (Cache/Queue)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  # 3. Backend (Django)
+  backend:
+    build: .
+    command: sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - DATABASE_URL=postgres://postgres:secret@db:5432/vivaclub
+      - REDIS_URL=redis://redis:6379/1
+      - SECRET_KEY=django-insecure-dev-key-change-in-prod-12345
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+
+volumes:
+  pg_data:

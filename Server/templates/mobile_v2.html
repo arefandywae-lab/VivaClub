@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viva Club Test (v3 - Fresh)</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #eef2f6;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #444;
+        }
+
+        input,
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:active {
+            background: #1d4ed8;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #chat-log {
+            height: 250px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .msg {
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .msg b {
+            color: #2563eb;
+            margin-right: 5px;
+        }
+
+        #video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            height: 250px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 10px;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📱 Viva Club (v3)</h1>
+
+    <!-- 1. AUTH -->
+    <div id="auth-section" class="card">
+        <h3>🔐 Login</h3>
+        <input type="text" id="username" placeholder="Username (e.g., patient1)">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <div id="auth-status" style="margin-top: 10px; color: #ef4444; text-align: center;"></div>
+    </div>
+
+    <!-- 2. DASHBOARD -->
+    <div id="dashboard-section" class="card hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>👋 Hi, <span id="display-name">User</span></h3>
+            <button onclick="location.reload()"
+                style="width: auto; padding: 5px 10px; font-size: 12px; background: #64748b;">Logout</button>
+        </div>
+
+        <!-- LiveKit -->
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+        <h4>🎥 Video Call</h4>
+        <input type="text" id="room-name" placeholder="Room Name" value="room1">
+        <button onclick="joinVideo()">Join Video Room</button>
+        <div id="video-container"></div>
+
+        <!-- Chat -->
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+        <h4>💬 Chat</h4>
+        <div id="chat-log"></div>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="chat-msg" placeholder="Type message..." style="margin: 0;">
+            <button onclick="sendChat()" style="width: 80px; margin: 0;">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let accessToken = null;
+        let ws = null;
+        let room = null;
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const res = await fetch('/api/auth/login/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    accessToken = data.access;
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('dashboard-section').classList.remove('hidden');
+                    document.getElementById('display-name').innerText = username;
+                    connectChat(document.getElementById('room-name').value);
+                } else {
+                    document.getElementById('auth-status').innerText = "Login Failed: " + JSON.stringify(data);
+                }
+            } catch (e) {
+                document.getElementById('auth-status').innerText = "Error: " + e;
+            }
+        }
+
+        // --- CHAT ---
+        function connectChat(roomName) {
+            if (!accessToken) return;
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/chat/${roomName}/?token=${accessToken}`;
+
+            console.log("WS Connecting:", wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => logChat("System", "✅ Connected");
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                logChat(data.sender, data.message);
+            };
+            ws.onclose = () => logChat("System", "❌ Disconnected");
+        }
+
+        function sendChat() {
+            const msg = document.getElementById('chat-msg').value;
+            if (ws && msg) {
+                ws.send(JSON.stringify({ message: msg }));
+                document.getElementById('chat-msg').value = '';
+            }
+        }
+
+        function logChat(sender, msg) {
+            const div = document.createElement('div');
+            div.className = 'msg';
+            div.innerHTML = `<b>${sender}:</b> ${msg}`;
+            const log = document.getElementById('chat-log');
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // --- VIDEO (Reliable UMD Fix) ---
+        async function joinVideo() {
+            const roomName = document.getElementById('room-name').value;
+
+            // 1. Check Library Global
+            const LK = window.LivekitClient || window.LiveKitClient;
+            if (!LK) {
+                alert("🚨 Error: LiveKit SDK failed to load. Please check your internet connection.");
+                return;
+            }
+
+            // 2. Get Token
+            try {
+                const res = await fetch('/api/community/livekit/token/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({ room_name: roomName })
+                });
+                const data = await res.json();
+
+                if (!data.token) {
+                    alert("Failed to get token");
+                    return;
+                }
+
+                // 3. Connect
+                const liveKitUrl = data.url;
+                if (!liveKitUrl || liveKitUrl.includes("your-project")) {
+                    alert("⚠️ Configure LIVEKIT_API_URL in .env!");
+                    return;
+                }
+
+                room = new LK.Room();
+                room.on(LK.RoomEvent.TrackSubscribed, (track) => {
+                    const el = track.attach();
+                    document.getElementById('video-container').appendChild(el);
+                });
+
+                await room.connect(liveKitUrl, data.token);
+
+                // 4. Enable Camera/Mic (with error handling)
+                try {
+                    const tracks = await room.localParticipant.enableCameraAndMicrophone();
+                    // Attach the first video track found
+                    const videoTrack = tracks.find(t => t.kind === 'video');
+                    if (videoTrack) {
+                        document.getElementById('video-container').appendChild(videoTrack.attach());
+                    }
+                } catch (err) {
+                    console.error("Camera Error:", err);
+                    alert("⚠️ Could not access Camera/Mic. \n1. Check HTTPS (ngrok).\n2. Allow Permissions.\nError: " + err.message);
+                }
+
+                alert("✅ Joined Video Room!");
+
+            } catch (e) {
+                alert("Join Error: " + e);
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+
+</html>
