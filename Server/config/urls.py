@@ -19,6 +19,16 @@ from django.urls import path, include
 from django.http import JsonResponse
 
 from apps.core_views import MobileTestView, MobileTestV2View
+from django.db import connection
+
+def db_test_view(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            row = cursor.fetchone()
+        return JsonResponse({'status': 'success', 'db_result': row[0]})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,4 +39,5 @@ urlpatterns = [
     path('api/clinical/', include('apps.clinical.urls')),
     path('api/community/', include('apps.community.urls')),
     path('health/', lambda request: JsonResponse({'status': 'ok'}), name='health'),
+    path('db-test/', db_test_view, name='db_test'),
 ]
