@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+export PYTHONUNBUFFERED=1
+export LANG=C.UTF-8
 
 echo ">>> STARTING RAILWAY ENTRYPOINT"
 echo ">>> Current Directory: $(pwd)"

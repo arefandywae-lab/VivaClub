@@ -92,10 +92,24 @@ ASGI_APPLICATION = 'config.asgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-DATABASES = {
-    'default': env.db('DATABASE_URL', default='postgres://postgres:secret@db:5432/vivaclub')
-}
-DATABASES['default']['CONN_MAX_AGE'] = 600
+import dj_database_url
+
+# Use os.environ.get directly to avoid django-environ issues
+db_url = os.environ.get('DATABASE_URL')
+
+if db_url:
+    DATABASES = {
+        'default': dj_database_url.parse(db_url, conn_max_age=600)
+    }
+else:
+    # Fallback for local development if not set
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
 
 
 # Caches & Redis
