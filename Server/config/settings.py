@@ -203,5 +203,37 @@ CLOUDINARY_STORAGE = {
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Firebase FCM
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(BASE_DIR / "firebase-service-account.json")
-# FIREBASE_CREDENTIAL_PATH = str(BASE_DIR / "firebase-service-account.json")
+# Firebase FCM
+import firebase_admin
+from firebase_admin import credentials
+import json
+import base64
+
+try:
+    # 1. Try JSON String from Env (Railway/Cloud)
+    firebase_json = env('FIREBASE_CREDENTIALS_JSON', default=None)
+    
+    if firebase_json:
+        # If user copy-pasted raw JSON string
+        cred = credentials.Certificate(json.loads(firebase_json))
+    else:
+        # 2. Try File Path (Local)
+        # Check standard GOOGLE_APPLICATION_CREDENTIALS or local file
+        default_cred_path = str(BASE_DIR / "vivaclub-c5f16-firebase-adminsdk-fbsvc-259f1e2d17.json")
+        cred_path = env('GOOGLE_APPLICATION_CREDENTIALS', default=default_cred_path)
+        
+        if os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+        else:
+            cred = None
+            print("Warning: Firebase Credentials not found.")
+
+    if cred:
+        try:
+            firebase_admin.get_app()
+        except ValueError:
+            firebase_admin.initialize_app(cred)
+            print("Firebase Admin Initialized Successfully")
+            
+except Exception as e:
+    print(f"Firebase Init Error: {e}")

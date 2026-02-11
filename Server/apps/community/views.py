@@ -1,9 +1,12 @@
 from rest_framework import viewsets, permissions, decorators, status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import GhostProfile, GhostSubscription
-from .serializers import GhostProfileSerializer, GhostSubscriptionSerializer
+from .models import GhostProfile, GhostSubscription, Room
+from .serializers import GhostProfileSerializer, GhostSubscriptionSerializer, RoomSerializer
+from apps.utils.ghost_names import generate_ghost_name
+import uuid
 
+# ... GhostProfileViewSet ...
 class GhostProfileViewSet(viewsets.ModelViewSet):
     queryset = GhostProfile.objects.filter(is_active=True)
     serializer_class = GhostProfileSerializer
@@ -12,7 +15,11 @@ class GhostProfileViewSet(viewsets.ModelViewSet):
     @decorators.action(detail=False, methods=['get', 'put', 'patch'], url_path='me')
     def me(self, request):
         """Get or update own ghost profile"""
-        profile = get_object_or_404(GhostProfile, user=request.user)
+        # Ensure ghost profile exists
+        profile, created = GhostProfile.objects.get_or_create(
+            user=request.user, 
+            defaults={'display_name': generate_ghost_name()}
+        )
         
         if request.method == 'GET':
             serializer = self.get_serializer(profile)
@@ -61,3 +68,73 @@ class GhostSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         my_profile = get_object_or_404(GhostProfile, user=self.request.user)
         return GhostSubscription.objects.filter(follower=my_profile)
+
+class RoomViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for Clubhouse Rooms.
+    - POST /: Create a new room (User automatically becomes Speaker/Host)
+    - GET /: List active rooms
+    - POST /{id}/join: Get LiveKit Token to join as Listener
+    """
+    queryset = Room.objects.filter(is_active=True).order_by('-created_at')
+    serializer_class = RoomSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # Auto-assign host from request.user's GhostProfile
+        host_profile, _ = GhostProfile.objects.get_or_create(
+            user=self.request.user,
+            defaults={'display_name': generate_ghost_name()}
+        )
+        serializer.save(host=host_profile)
+
+    @decorators.action(detail=True, methods=['post'], url_path='join')
+    def join(self, request, pk=None):
+        room = self.get_object()
+        
+        # 1. Get User's Ghost Profile
+        user_profile, _ = GhostProfile.objects.get_or_create(
+            user=request.user,
+            defaults={'display_name': generate_ghost_name()}
+        )
+
+        # 2. Determine Role
+        # If user is host -> Speaker/Admin
+        is_host = (room.host == user_profile)
+        
+        # 3. Generate LiveKit Token
+        from livekit import api
+        import os
+        
+        api_key = os.environ.get('LIVEKIT_API_KEY')
+        api_secret = os.environ.get('LIVEKIT_API_SECRET')
+        ws_url = os.environ.get('LIVEKIT_API_URL')
+
+        if not api_key or not api_secret:
+             return Response({"error": "LiveKit credentials not configured"}, status=500)
+
+        # Identity = User ID (Ghost Profile ID for anonymity in room?)
+        # Let's use User ID for persistence, but display name from Ghost
+        identity = str(request.user.id)
+        name = user_profile.display_name
+
+        grant = api.VideoGrants(
+            room_join=True,
+            room=str(room.id),
+            can_publish=is_host, # Only host can speak initially
+            can_subscribe=True,
+        )
+
+        token = api.AccessToken(api_key, api_secret) \
+            .with_identity(identity) \
+            .with_name(name) \
+            .with_grants(grant) \
+            .to_jwt()
+
+        return Response({
+            "token": token,
+            "url": ws_url,
+            "room_id": str(room.id),
+            "is_host": is_host,
+            "identity": identity
+        })

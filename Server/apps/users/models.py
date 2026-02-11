@@ -12,6 +12,7 @@ class User(AbstractUser):
 
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.PATIENT)
     display_name = models.CharField(max_length=255, blank=True, null=True)
+    phone_number = models.CharField(max_length=15, unique=True, blank=True, null=True)
     
     # Doctor Specifics
     license_id = models.CharField(max_length=50, blank=True, null=True)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import GhostProfile, GhostSubscription
+from .models import GhostProfile, GhostSubscription, Room
 
 class GhostProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,3 +18,11 @@ class GhostSubscriptionSerializer(serializers.ModelSerializer):
         model = GhostSubscription
         fields = ['id', 'follower', 'target', 'target_details', 'created_at']
         read_only_fields = ['id', 'follower', 'created_at']
+
+class RoomSerializer(serializers.ModelSerializer):
+    host_details = GhostProfileSerializer(source='host', read_only=True)
+    
+    class Meta:
+        model = Room
+        fields = ['id', 'title', 'host', 'host_details', 'category', 'listeners_count', 'is_active', 'created_at']
+        read_only_fields = ['id', 'host', 'listeners_count', 'is_active', 'created_at']
