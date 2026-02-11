@@ -31,6 +31,15 @@ fi
 echo ">>> Validating Django Settings..."
 python -c "import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings'); from django.conf import settings; print('Settings loaded successfully')" || echo ">>> ERROR: Settings failed to load"
 
+# Run Migrations
+echo ">>> Running Migrations..."
+python manage.py migrate --noinput || echo ">>> WARNING: Migration failed"
+
+# Collect Static Files
+echo ">>> Collecting Static Files..."
+mkdir -p staticfiles
+python manage.py collectstatic --noinput || echo ">>> WARNING: Collectstatic failed"
+
 # Start Daphne
 echo ">>> Starting Daphne on 0.0.0.0:$PORT..."
 exec daphne -v 2 -b 0.0.0.0 -p $PORT config.asgi:application
