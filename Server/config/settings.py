@@ -8,6 +8,9 @@ from pathlib import Path
 import os
 import environ
 
+# DEBUG: Print environment keys to verify Railway injection
+print(f"DEBUG: os.environ keys: {list(os.environ.keys())}")
+
 # Initialize environment variables
 env = environ.Env()
 # Read .env file if it exists
