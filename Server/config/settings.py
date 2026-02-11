@@ -113,8 +113,10 @@ else:
 
 
 # Caches & Redis
+redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/1')
+
 CACHES = {
-    'default': env.cache('REDIS_URL', default='redis://redis:6379/1'),
+    'default': env.cache('REDIS_URL', default=redis_url),
 }
 
 # Channels Layer provided by Redis
@@ -122,7 +124,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env('REDIS_URL', default='redis://redis:6379/1')],
+            "hosts": [redis_url],
         },
     },
 }
@@ -173,6 +175,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS Settings
 CORS_ALLOW_ALL_ORIGINS = True # For development
 CSRF_TRUSTED_ORIGINS = ['http://localhost:3000', 'https://*.railway.app'] # Add frontend domains
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Django-Q Cluster for asynchronous tasks
 Q_CLUSTER = {
@@ -185,7 +188,7 @@ Q_CLUSTER = {
     'save_limit': 250,
     'queue_limit': 500,
     'label': 'Django Q',
-    'redis': env('REDIS_URL', default='redis://redis:6379/1')
+    'redis': redis_url
 }
 
 # REST Framework
