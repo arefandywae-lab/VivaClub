@@ -7,10 +7,21 @@ User = get_user_model()
 from apps.utils.ghost_names import generate_ghost_name
 
 class UserSerializer(serializers.ModelSerializer):
+    ghost_profile = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number', 'role', 'display_name', 'license_id', 'specialty', 'verified_at', 'is_online']
-        read_only_fields = ['id', 'role', 'verified_at', 'is_online'] # Role set at registration
+        fields = ['id', 'username', 'email', 'phone_number', 'role', 'display_name', 'license_id', 'specialty', 'verified_at', 'is_online', 'ghost_profile']
+        read_only_fields = ['id', 'role', 'verified_at', 'is_online', 'ghost_profile']
+
+    def get_ghost_profile(self, obj):
+        # Return simple ghost profile info
+        if hasattr(obj, 'ghost_profile'):
+             return {
+                 'display_name': obj.ghost_profile.display_name,
+                 'avatar': obj.ghost_profile.avatar_url # Ensure model has this or handle None
+             }
+        return None
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

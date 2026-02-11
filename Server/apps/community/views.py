@@ -76,9 +76,23 @@ class RoomViewSet(viewsets.ModelViewSet):
     - GET /: List active rooms
     - POST /{id}/join: Get LiveKit Token to join as Listener
     """
-    queryset = Room.objects.filter(is_active=True).order_by('-created_at')
     serializer_class = RoomSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # 1. Proactive cleanup: deactivate empty rooms older than 1 minute
+        from django.utils import timezone
+        from datetime import timedelta
+        one_minute_ago = timezone.now() - timedelta(minutes=1)
+        
+        Room.objects.filter(
+            is_active=True,
+            listeners_count=0,
+            last_active_at__lte=one_minute_ago
+        ).update(is_active=False)
+        
+        # 2. Return active rooms
+        return Room.objects.filter(is_active=True).order_by('-created_at')
 
     def perform_create(self, serializer):
         # Auto-assign host from request.user's GhostProfile
@@ -131,6 +145,12 @@ class RoomViewSet(viewsets.ModelViewSet):
             .with_grants(grant) \
             .to_jwt()
 
+        # Update room occupant tracking
+        from django.utils import timezone
+        room.listeners_count += 1
+        room.last_active_at = timezone.now()
+        room.save()
+
         return Response({
             "token": token,
             "url": ws_url,
@@ -138,3 +158,18 @@ class RoomViewSet(viewsets.ModelViewSet):
             "is_host": is_host,
             "identity": identity
         })
+
+    @decorators.action(detail=True, methods=['post'], url_path='leave')
+    def leave(self, request, pk=None):
+        room = self.get_object()
+        from django.utils import timezone
+        
+        # Decrement count (don't go below 0)
+        room.listeners_count = max(0, room.listeners_count - 1)
+        
+        # If room is now empty, mark the time it became empty
+        if room.listeners_count == 0:
+            room.last_active_at = timezone.now()
+        
+        room.save()
+        return Response({"status": "left", "listeners_count": room.listeners_count})

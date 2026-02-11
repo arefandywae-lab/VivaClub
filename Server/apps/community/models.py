@@ -29,6 +29,8 @@ class Room(models.Model):
         ('depression', 'Depression Support'),
         ('anxiety', 'Anxiety Support'),
         ('relationships', 'Relationships'),
+        ('burnout', 'Burnout'),
+        ('sleep', 'Sleep'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -38,6 +40,7 @@ class Room(models.Model):
     
     # We can track participants using LiveKit webhooks, but keeping a count is useful for listing
     listeners_count = models.IntegerField(default=0)
+    last_active_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
