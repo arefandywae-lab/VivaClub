@@ -8,12 +8,6 @@ from pathlib import Path
 import os
 import environ
 
-# DEBUG: Verify DATABASE_URL presence and partial value
-db_url = os.environ.get('DATABASE_URL', '')
-safe_db_url = db_url[:20] + '...' if db_url else 'NONE'
-print(f"DEBUG: os.environ keys: {list(os.environ.keys())}")
-print(f"DEBUG: Raw DATABASE_URL check: {safe_db_url}")
-
 # Initialize environment variables
 env = environ.Env()
 # Read .env file if it exists
@@ -102,12 +96,6 @@ DATABASES = {
     'default': env.db('DATABASE_URL', default='postgres://postgres:secret@db:5432/vivaclub')
 }
 DATABASES['default']['CONN_MAX_AGE'] = 600
-
-# DEBUG: Print final DB config (masking password)
-if 'default' in DATABASES and 'HOST' in DATABASES['default']:
-    print(f"DEBUG: DB Host: {DATABASES['default']['HOST']}")
-    print(f"DEBUG: DB Port: {DATABASES['default']['PORT']}")
-    print(f"DEBUG: DB Name: {DATABASES['default']['NAME']}")
 
 
 # Caches & Redis

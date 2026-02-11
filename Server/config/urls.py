@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 
 from apps.core_views import MobileTestView, MobileTestV2View
 
@@ -27,4 +28,5 @@ urlpatterns = [
     path('api/bookings/', include('apps.bookings.urls')),
     path('api/clinical/', include('apps.clinical.urls')),
     path('api/community/', include('apps.community.urls')),
+    path('health/', lambda request: JsonResponse({'status': 'ok'}), name='health'),
 ]
