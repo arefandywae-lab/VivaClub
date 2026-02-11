@@ -5,15 +5,17 @@ class ApiConstants {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS Simulator
   static String get baseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8000';
+      return 'https://vivaclub-production.up.railway.app';
     }
     if (kReleaseMode) {
-      return 'https://viva-club-production.railway.app'; // Replace with real prod URL later
+      return 'https://vivaclub-production.up.railway.app';
     }
     if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000';
+      return 'http://10.0.2.2:8000'; // Local dev for emulator
     }
-    return 'http://localhost:8000';
+    // For physical iOS devices in debug mode, we point to Railway
+    // because localhost doesn't work.
+    return 'https://vivaclub-production.up.railway.app';
   }
 
   // Auth Endpoints
