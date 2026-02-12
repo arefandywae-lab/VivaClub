@@ -93,14 +93,28 @@ ASGI_APPLICATION = 'config.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 import dj_database_url
+import socket
 
 # Use os.environ.get directly to avoid django-environ issues
 db_url = os.environ.get('DATABASE_URL')
 
 if db_url:
-    DATABASES = {
-        'default': dj_database_url.parse(db_url, conn_max_age=600)
-    }
+    db_config = dj_database_url.parse(db_url, conn_max_age=600)
+    # Fix for Railway/Supabase IPv6 issues: Force IPv4 resolution
+    try:
+        hostname = db_config.get('HOST')
+        if hostname:
+            # Get IPv4 address
+            addr_info = socket.getaddrinfo(hostname, None, family=socket.AF_INET)
+            if addr_info:
+                ip_v4 = addr_info[0][4][0]
+                # Pass hostaddr to libpq via OPTIONS to verify SSL correctly but connect via IP
+                db_config.setdefault('OPTIONS', {})['hostaddr'] = ip_v4
+                print(f"DEBUG: Resolved {hostname} to {ip_v4} (Forcing IPv4)")
+    except Exception as e:
+        print(f"DEBUG: Failed to resolve IPv4 for DB: {e}")
+        
+    DATABASES = {'default': db_config}
 else:
     # Fallback for local development if not set
     DATABASES = {
@@ -227,16 +241,20 @@ import base64
 
 try:
     # 1. Try JSON String from Env (Railway/Cloud)
+    # Check FIREBASE_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS (if it looks like JSON)
     firebase_json = env('FIREBASE_CREDENTIALS_JSON', default=None)
+    google_creds = env('GOOGLE_APPLICATION_CREDENTIALS', default=None)
     
+    if not firebase_json and google_creds and google_creds.strip().startswith('{'):
+        firebase_json = google_creds
+
     if firebase_json:
         # If user copy-pasted raw JSON string
         cred = credentials.Certificate(json.loads(firebase_json))
     else:
         # 2. Try File Path (Local)
-        # Check standard GOOGLE_APPLICATION_CREDENTIALS or local file
         default_cred_path = str(BASE_DIR / "vivaclub-c5f16-firebase-adminsdk-fbsvc-259f1e2d17.json")
-        cred_path = env('GOOGLE_APPLICATION_CREDENTIALS', default=default_cred_path)
+        cred_path = google_creds if google_creds else default_cred_path
         
         if os.path.exists(cred_path):
             cred = credentials.Certificate(cred_path)
