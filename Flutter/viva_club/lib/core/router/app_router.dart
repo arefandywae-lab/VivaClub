@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:viva_club/core/router/go_router_refresh_stream.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/welcome_screen.dart';
@@ -15,9 +17,29 @@ import '../widgets/scaffold_with_nav_bar.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class AppRouter {
-  static final router = GoRouter(
+  final AuthBloc authBloc;
+
+  AppRouter(this.authBloc);
+
+  late final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
+    refreshListenable: GoRouterRefreshStream(authBloc.stream),
+    redirect: (context, state) {
+      final isLoggedIn = authBloc.state is AuthAuthenticated;
+      final isLoggingIn =
+          state.uri.toString() == '/login' ||
+          state.uri.toString() == '/signup' ||
+          state.uri.toString() == '/';
+
+      // If not logged in and not on a login/signup/welcome page, go to welcome
+      if (!isLoggedIn && !isLoggingIn) return '/';
+
+      // If logged in and on a login/signup/welcome page, go to dashboard
+      if (isLoggedIn && isLoggingIn) return '/dashboard';
+
+      return null;
+    },
     routes: [
       // Screens WITHOUT Bottom Nav
       GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),

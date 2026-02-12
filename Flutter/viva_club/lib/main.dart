@@ -14,14 +14,31 @@ import 'features/community/data/livekit_room_service.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const VivaClubApp());
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Auth dependencies at root to share with Router
+  final authRepository = AuthRepository();
+  final authBloc = AuthBloc(authRepository: authRepository)
+    ..add(AuthCheckRequested());
+
+  runApp(VivaClubApp(authRepository: authRepository, authBloc: authBloc));
 }
 
 class VivaClubApp extends StatelessWidget {
-  const VivaClubApp({super.key});
+  final AuthRepository authRepository;
+  final AuthBloc authBloc;
+
+  const VivaClubApp({
+    super.key,
+    required this.authRepository,
+    required this.authBloc,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Initialize Router with the AuthBloc
+    final appRouter = AppRouter(authBloc);
+
     return ScreenUtilInit(
       designSize: const Size(375, 812),
       minTextAdapt: true,
@@ -29,7 +46,7 @@ class VivaClubApp extends StatelessWidget {
       builder: (context, child) {
         return MultiRepositoryProvider(
           providers: [
-            RepositoryProvider(create: (context) => AuthRepository()),
+            RepositoryProvider.value(value: authRepository),
             RepositoryProvider(create: (context) => CommunityRepository()),
             RepositoryProvider(create: (context) => ProfileRepository()),
           ],
@@ -40,11 +57,8 @@ class VivaClubApp extends StatelessWidget {
                   communityRepository: context.read<CommunityRepository>(),
                 ),
               ),
-              BlocProvider(
-                create: (context) =>
-                    AuthBloc(authRepository: context.read<AuthRepository>())
-                      ..add(AuthCheckRequested()),
-              ),
+              // Use BlocProvider.value to provide the existing instance
+              BlocProvider.value(value: authBloc),
               BlocProvider(
                 create: (context) => RoomBloc(
                   communityRepository: context.read<CommunityRepository>(),
@@ -59,7 +73,7 @@ class VivaClubApp extends StatelessWidget {
             child: MaterialApp.router(
               title: 'Viva Club',
               theme: AppTheme.lightTheme,
-              routerConfig: AppRouter.router,
+              routerConfig: appRouter.router,
               debugShowCheckedModeBanner: false,
             ),
           ),

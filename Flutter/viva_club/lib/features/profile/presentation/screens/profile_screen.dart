@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
+// import 'package:go_router/go_router.dart';
 import 'package:viva_club/core/theme/app_theme.dart';
 import '../../../../core/utils/emoji_utils.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../bloc/profile_bloc.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -692,7 +693,12 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildLogoutButton() {
     return OutlinedButton(
-      onPressed: () => context.go('/'),
+      onPressed: () {
+        context.read<AuthBloc>().add(AuthLogoutRequested());
+        // We don't need context.go('/') here because the AuthBloc listener
+        // (which we will add) or GoRouter redirect (which we will implement)
+        // will handle the navigation to login screen.
+      },
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Colors.redAccent),
         padding: EdgeInsets.symmetric(vertical: 16.h),

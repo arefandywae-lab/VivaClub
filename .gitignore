@@ -26,3 +26,4 @@ docker-compose.override.yml
 # Firebase
 firebase-service-account.json
 vivaclub-*.json
+railway.txt
