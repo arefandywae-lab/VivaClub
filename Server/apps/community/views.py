@@ -100,7 +100,18 @@ class RoomViewSet(viewsets.ModelViewSet):
             user=self.request.user,
             defaults={'display_name': generate_ghost_name()}
         )
-        serializer.save(host=host_profile)
+        
+        # Unique Title Logic
+        title = serializer.validated_data.get('title', 'Untitled Room')
+        original_title = title
+        counter = 1
+        
+        # Check if active room with this title exists
+        while Room.objects.filter(title=title, is_active=True).exists():
+            title = f"{original_title}#{counter}"
+            counter += 1
+            
+        serializer.save(host=host_profile, title=title)
 
     @decorators.action(detail=True, methods=['post'], url_path='join')
     def join(self, request, pk=None):

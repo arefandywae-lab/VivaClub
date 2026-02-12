@@ -15,6 +15,7 @@ class CreateRoomScreen extends StatefulWidget {
 class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final _topicController = TextEditingController();
   String _selectedCategory = 'general';
+  bool _isSubmitting = false;
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -247,6 +248,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
               child: BlocListener<RoomBloc, RoomState>(
                 listener: (context, state) {
                   if (state is RoomJoined) {
+                    if (!mounted) return;
+                    // Navigation happens, keep submitting true or reset if needed, but usually we leave.
                     context.pushReplacement(
                       '/live_room',
                       extra: {
@@ -258,15 +261,19 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                       },
                     );
                   } else if (state is RoomFailure) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(state.message)));
+                    if (mounted) {
+                      setState(() => _isSubmitting = false);
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(state.message)));
+                    }
                   }
                 },
                 child: GestureDetector(
-                  onTap: _topicController.text.trim().isEmpty
+                  onTap: (_topicController.text.trim().isEmpty || _isSubmitting)
                       ? null
                       : () {
+                          setState(() => _isSubmitting = true);
                           context.read<RoomBloc>().add(
                             RoomCreate(
                               _topicController.text.trim(),
@@ -276,7 +283,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                         },
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 200),
-                    opacity: _topicController.text.trim().isEmpty ? 0.5 : 1.0,
+                    opacity:
+                        (_topicController.text.trim().isEmpty || _isSubmitting)
+                        ? 0.5
+                        : 1.0,
                     child: Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(vertical: 18.h),
@@ -296,14 +306,24 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.auto_awesome,
-                            color: AppTheme.textDark,
-                            size: 20.sp,
-                          ),
+                          if (_isSubmitting)
+                            SizedBox(
+                              width: 20.w,
+                              height: 20.w,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.textDark,
+                              ),
+                            )
+                          else
+                            Icon(
+                              Icons.auto_awesome,
+                              color: AppTheme.textDark,
+                              size: 20.sp,
+                            ),
                           SizedBox(width: 8.w),
                           Text(
-                            'Go Live Now',
+                            _isSubmitting ? 'Creating...' : 'Go Live Now',
                             style: TextStyle(
                               fontSize: 17.sp,
                               fontWeight: FontWeight.bold,
