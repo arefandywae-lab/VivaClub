@@ -27,9 +27,18 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     role = serializers.ChoiceField(choices=User.Role.choices, default=User.Role.PATIENT)
 
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    email = serializers.EmailField(required=True)
+
     class Meta:
         model = User
         fields = ['username', 'password', 'email', 'phone_number', 'role', 'first_name', 'last_name', 'license_id', 'specialty']
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
 
     def create(self, validated_data):
         password = validated_data.pop('password')

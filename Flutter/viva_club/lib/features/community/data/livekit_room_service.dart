@@ -11,7 +11,6 @@ class LiveKitRoomService extends ChangeNotifier {
   bool _isHost = false;
   bool _isConnecting = false;
   List<Participant> _participants = [];
-  bool _isMuted = true;
 
   LiveKitRoomService({required this.communityRepository});
 
@@ -21,7 +20,14 @@ class LiveKitRoomService extends ChangeNotifier {
   bool get isHost => _isHost;
   bool get isConnecting => _isConnecting;
   List<Participant> get participants => _participants;
-  bool get isMuted => _isMuted;
+  bool get isMuted {
+    final p = _room?.localParticipant;
+    if (p == null) return true;
+    // Considered muted if no audio tracks or all audio tracks are muted
+    return p.audioTrackPublications.isEmpty ||
+        p.audioTrackPublications.every((track) => track.muted);
+  }
+
   bool get isActive => _activeRoomId != null;
 
   Future<void> connect({
@@ -61,9 +67,6 @@ class LiveKitRoomService extends ChangeNotifier {
 
       if (isHost) {
         await _room!.localParticipant?.setMicrophoneEnabled(true);
-        _isMuted = false;
-      } else {
-        _isMuted = true;
       }
 
       _updateParticipants();
@@ -77,13 +80,13 @@ class LiveKitRoomService extends ChangeNotifier {
     }
   }
 
-  void _onRoomEvent() {
+  void _onRoomEvent([dynamic _]) {
     _updateParticipants();
     notifyListeners();
   }
 
   void _updateParticipants() {
-    if (_room == null) return;
+    if (_room == null || _room!.localParticipant == null) return;
     _participants = [
       _room!.localParticipant!,
       ..._room!.remoteParticipants.values,
@@ -91,9 +94,25 @@ class LiveKitRoomService extends ChangeNotifier {
   }
 
   Future<void> setMicrophoneEnabled(bool enabled) async {
-    await _room?.localParticipant?.setMicrophoneEnabled(enabled);
-    _isMuted = !enabled;
-    notifyListeners();
+    try {
+      final p = _room?.localParticipant;
+      if (p == null) return;
+
+      // Check if we have permission to publish
+      if (enabled) {
+        // LiveKit's permissions object isn't always fully populated immediately after join for listeners
+        // But we can check if we are meant to be a publisher via metadata or role if we had that info.
+        // For now, let's catch the specific error or check if we can publish.
+        // A safer way is to check the participant's permissions if available.
+        // However, simply wrapping in try-catch as done below is good, but we should handle the specific error.
+      }
+
+      await p.setMicrophoneEnabled(enabled);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error toggling microphone: $e');
+      // Optional: rethrow or notify UI of error
+    }
   }
 
   Future<void> leave() async {
@@ -117,6 +136,35 @@ class LiveKitRoomService extends ChangeNotifier {
       await roomToDispose?.dispose();
     } catch (e) {
       debugPrint('Error leaving room: $e');
+    }
+  }
+
+  Future<void> toggleHandRaise(bool isRaised) async {
+    try {
+      final p = _room?.localParticipant;
+      if (p == null) return;
+
+      // Update metadata: {"handRaised": true}
+      p.setMetadata('{"handRaised": $isRaised}');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error toggling hand raise: $e');
+    }
+  }
+
+  bool isHandRaised(Participant p) {
+    try {
+      if (p.metadata == null || p.metadata!.isEmpty) return false;
+      // Simple string check to avoid full JSON parsing overhead if simple
+      return p.metadata!.contains('"handRaised": true');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> inviteSpeaker(String identity) async {
+    if (_activeRoomId != null) {
+      await communityRepository.inviteSpeaker(_activeRoomId!, identity);
     }
   }
 

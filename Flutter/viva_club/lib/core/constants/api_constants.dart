@@ -28,6 +28,8 @@ class ApiConstants {
   static String joinRoom(String roomId) => '/api/community/rooms/$roomId/join/';
   static String leaveRoom(String roomId) =>
       '/api/community/rooms/$roomId/leave/';
+  static String inviteSpeaker(String roomId) =>
+      '/api/community/rooms/$roomId/invite/';
 
   // Booking Endpoints
   static const String appointments = '/api/bookings/slots/';

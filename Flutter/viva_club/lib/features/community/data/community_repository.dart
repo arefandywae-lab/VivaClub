@@ -45,4 +45,15 @@ class CommunityRepository {
       // Silent fail for leave, not critical for user UX
     }
   }
+
+  Future<void> inviteSpeaker(String roomId, String identity) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.inviteSpeaker(roomId),
+        data: {'identity': identity},
+      );
+    } catch (e) {
+      throw 'Failed to invite speaker';
+    }
+  }
 }

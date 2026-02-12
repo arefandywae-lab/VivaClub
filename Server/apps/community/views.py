@@ -171,5 +171,43 @@ class RoomViewSet(viewsets.ModelViewSet):
         if room.listeners_count == 0:
             room.last_active_at = timezone.now()
         
-        room.save()
-        return Response({"status": "left", "listeners_count": room.listeners_count})
+    @decorators.action(detail=True, methods=['post'], url_path='invite')
+    def invite(self, request, pk=None):
+        room = self.get_object()
+        
+        # 1. Verify Host
+        user_profile, _ = GhostProfile.objects.get_or_create(user=request.user)
+        if room.host != user_profile:
+             return Response({"error": "Only host can invite speakers"}, status=403)
+
+        target_identity = request.data.get('identity')
+        if not target_identity:
+             return Response({"error": "Target identity required"}, status=400)
+
+        # 2. Update Permissions via LiveKit Server API
+        from livekit import api
+        import os
+        
+        api_key = os.environ.get('LIVEKIT_API_KEY')
+        api_secret = os.environ.get('LIVEKIT_API_SECRET')
+        ws_url = os.environ.get('LIVEKIT_API_URL')
+
+        if not api_key or not api_secret:
+             return Response({"error": "LiveKit credentials not configured"}, status=500)
+
+        try:
+            svc = api.RoomServiceClient(ws_url, api_key, api_secret)
+            # Grant can_publish=True
+            svc.update_participant_permissions(
+                room=str(room.id),
+                identity=target_identity,
+                permission=api.ParticipantPermission(
+                    can_subscribe=True,
+                    can_publish=True,
+                    can_publish_data=True,
+                ),
+            )
+            return Response({"message": "Invited speaker successfully"})
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+

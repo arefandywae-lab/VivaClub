@@ -238,6 +238,27 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ],
                 ),
               ),
+              // Small Logout Button
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () =>
+                      context.read<AuthBloc>().add(AuthLogoutRequested()),
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Icon(
+                      Icons.logout_rounded,
+                      color: Colors.redAccent,
+                      size: 20.sp,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 20.h),
@@ -305,16 +326,19 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildTabBar() {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 24.w),
-      padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         color: Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16.r),
       ),
       child: TabBar(
         controller: _tabController,
+        padding: EdgeInsets.zero,
+        indicatorPadding: EdgeInsets.zero,
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
         indicator: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(16.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -325,7 +349,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         labelColor: AppTheme.textDark,
         unselectedLabelColor: AppTheme.textGrey,
         labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
-        dividerColor: Colors.transparent,
         tabs: const [
           Tab(text: 'Upcoming'),
           Tab(text: 'History'),
@@ -605,8 +628,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ],
                 ),
                 ...pastAppointments.map((record) => _buildHistoryCard(record)),
-                SizedBox(height: 16.h),
-                _buildLogoutButton(),
                 SizedBox(height: 40.h),
               ],
             ),
@@ -687,32 +708,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLogoutButton() {
-    return OutlinedButton(
-      onPressed: () {
-        context.read<AuthBloc>().add(AuthLogoutRequested());
-        // We don't need context.go('/') here because the AuthBloc listener
-        // (which we will add) or GoRouter redirect (which we will implement)
-        // will handle the navigation to login screen.
-      },
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Colors.redAccent),
-        padding: EdgeInsets.symmetric(vertical: 16.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-      ),
-      child: Text(
-        'Log Out',
-        style: TextStyle(
-          color: Colors.redAccent,
-          fontWeight: FontWeight.bold,
-          fontSize: 16.sp,
-        ),
       ),
     );
   }

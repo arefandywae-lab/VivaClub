@@ -28,12 +28,25 @@ class LiveRoomScreen extends StatefulWidget {
 }
 
 class _LiveRoomScreenState extends State<LiveRoomScreen> {
-  bool _handRaised = false;
+  bool _isLeaving = false; // Guard against multiple leaves
 
   void _leaveRoom() async {
-    context.read<LiveKitRoomService>().leave();
+    if (_isLeaving) return;
+    _isLeaving = true;
+
+    try {
+      await context.read<LiveKitRoomService>().leave(); // Await leave
+    } catch (e) {
+      debugPrint('Error leaving room: $e');
+    }
+
     if (mounted) {
-      context.pop();
+      // Safe navigation
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/dashboard');
+      }
     }
   }
 
@@ -141,7 +154,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                     bottom: 16.h,
                     left: 0,
                     right: 0,
-                    child: _buildBottomControls(isMuted),
+                    child: _buildBottomControls(isMuted, service),
                   ),
                 ],
               ),
@@ -159,8 +172,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () =>
-                context.pop(), // Don't leave, just go back (audio persists)
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/dashboard');
+              }
+            }, // Don't leave, just go back (audio persists)
             child: Icon(
               Icons.arrow_back_ios,
               color: AppTheme.textDark,
@@ -270,14 +288,21 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           ),
           itemCount: listeners.length,
           itemBuilder: (context, index) {
-            return _buildParticipantAvatar(listeners[index], false, index);
+            return GestureDetector(
+              onTap: () {
+                if (widget.isHost) {
+                  _showInviteDialog(context, listeners[index]);
+                }
+              },
+              child: _buildParticipantAvatar(listeners[index], false, index),
+            );
           },
         ),
       ],
     );
   }
 
-  Widget _buildBottomControls(bool isMuted) {
+  Widget _buildBottomControls(bool isMuted, LiveKitRoomService service) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
       child: Row(
@@ -287,12 +312,22 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
             children: [
               GestureDetector(
                 onTap: () {
-                  setState(() => _handRaised = !_handRaised);
+                  // Toggle based on current state (read from metadata)
+                  final isRaised = service.isHandRaised(
+                    service.room!.localParticipant!,
+                  );
+                  service.toggleHandRaise(!isRaised);
                 },
                 child: Container(
                   padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
-                    color: _handRaised ? AppTheme.butteryYellow : Colors.white,
+                    color:
+                        (service.room?.localParticipant != null &&
+                            service.isHandRaised(
+                              service.room!.localParticipant!,
+                            ))
+                        ? AppTheme.butteryYellow
+                        : Colors.white,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -306,28 +341,34 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 ),
               ),
               SizedBox(width: 16.w),
-              GestureDetector(
-                onTap: _toggleMute,
-                child: Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: isMuted ? const Color(0xFFFEF2F2) : Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    isMuted ? Icons.mic_off : Icons.mic,
-                    color: isMuted ? const Color(0xFFEF4444) : AppTheme.skyBlue,
-                    size: 24.sp,
+              // Only show Mic toggle if user is a speaker (host or has permissions)
+              if (widget.isHost ||
+                  (service.room?.localParticipant?.permissions.canPublish ==
+                      true))
+                GestureDetector(
+                  onTap: _toggleMute,
+                  child: Container(
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: isMuted ? const Color(0xFFFEF2F2) : Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      isMuted ? Icons.mic_off : Icons.mic,
+                      color: isMuted
+                          ? const Color(0xFFEF4444)
+                          : AppTheme.skyBlue,
+                      size: 24.sp,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           GestureDetector(
@@ -420,7 +461,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                   ),
                 ),
               // Hand raise indicator
-              if (isLocal && _handRaised)
+              if (Provider.of<LiveKitRoomService>(
+                context,
+                listen: false,
+              ).isHandRaised(p))
                 Positioned(
                   top: -4,
                   left: -4,
@@ -431,15 +475,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                   ),
                 ),
               // Mute indicator for speakers
-              if (isSpeaker && !isLocal)
+              if (isSpeaker)
                 Positioned(
                   bottom: -2,
                   right: -2,
                   child: Builder(
                     builder: (context) {
-                      final hasAudio = p.audioTrackPublications.isNotEmpty;
                       final isMuted =
-                          hasAudio &&
+                          p.audioTrackPublications.isEmpty ||
                           p.audioTrackPublications.every((pub) => pub.muted);
                       if (isMuted) {
                         return _buildIndicatorCircle(
@@ -483,6 +526,32 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         ],
       ),
       child: Icon(icon, size: 12.sp, color: iconColor),
+    );
+  }
+
+  void _showInviteDialog(BuildContext context, Participant p) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Invite to Speak'),
+        content: Text('Do you want to invite ${p.name} to become a speaker?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<LiveKitRoomService>().inviteSpeaker(p.identity);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Invited ${p.name} to speak')),
+              );
+            },
+            child: const Text('Invite'),
+          ),
+        ],
+      ),
     );
   }
 }

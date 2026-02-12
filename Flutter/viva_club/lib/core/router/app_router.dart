@@ -5,6 +5,7 @@ import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/welcome_screen.dart';
+import '../../features/auth/presentation/screens/splash_screen.dart'; // Import Splash
 import '../../features/community/presentation/screens/room_list_screen.dart';
 import '../../features/community/presentation/screens/create_room_screen.dart';
 import '../../features/community/presentation/screens/live_room_screen.dart';
@@ -23,25 +24,43 @@ class AppRouter {
 
   late final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/splash', // Start at Splash
     refreshListenable: GoRouterRefreshStream(authBloc.stream),
     redirect: (context, state) {
-      final isLoggedIn = authBloc.state is AuthAuthenticated;
+      final authState = authBloc.state;
+      final isSplash = state.uri.toString() == '/splash';
+
+      // 1. If initializing, stay on splash
+      if (authState is AuthInitial) {
+        return isSplash ? null : '/splash';
+      }
+
+      final isLoggedIn = authState is AuthAuthenticated;
       final isLoggingIn =
           state.uri.toString() == '/login' ||
           state.uri.toString() == '/signup' ||
           state.uri.toString() == '/';
 
-      // If not logged in and not on a login/signup/welcome page, go to welcome
+      // 2. If splash is done (we have a definitive state)
+      if (isSplash) {
+        return isLoggedIn ? '/dashboard' : '/';
+      }
+
+      // 3. Normal auth guards
+      // If not logged in and not on a public page, go to welcome
       if (!isLoggedIn && !isLoggingIn) return '/';
 
-      // If logged in and on a login/signup/welcome page, go to dashboard
+      // If logged in and on a public page, go to dashboard
       if (isLoggedIn && isLoggingIn) return '/dashboard';
 
       return null;
     },
     routes: [
       // Screens WITHOUT Bottom Nav
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
