@@ -53,7 +53,12 @@ class CommunityRepository {
         data: {'identity': identity},
       );
     } catch (e) {
-      throw 'Failed to invite speaker';
+      if (e.runtimeType.toString() == 'DioException') {
+        // Simple check, or import DioException
+        final res = (e as dynamic).response;
+        print('Invite Error: ${res?.statusCode} - ${res?.data}');
+      }
+      throw 'Failed to invite speaker: $e';
     }
   }
 }

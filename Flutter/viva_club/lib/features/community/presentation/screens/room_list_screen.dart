@@ -356,10 +356,13 @@ class _RoomListScreenState extends State<RoomListScreen> {
               ? DateTime.tryParse(room['last_active_at'])?.toLocal()
               : null;
 
+          final String hostRole = room['host_details']?['role'] ?? 'patient';
+
           return _RoomCard(
             index: index,
             title: title,
             hostName: hostName,
+            hostRole: hostRole,
             listeners: listeners,
             lastActiveAt: lastActiveAt,
             onTap: () => _joinRoom(context, roomId),
@@ -380,6 +383,7 @@ class _RoomCard extends StatefulWidget {
   final int index;
   final String title;
   final String hostName;
+  final String hostRole;
   final int listeners;
   final DateTime? lastActiveAt;
   final VoidCallback onTap;
@@ -388,6 +392,7 @@ class _RoomCard extends StatefulWidget {
     required this.index,
     required this.title,
     required this.hostName,
+    required this.hostRole,
     required this.listeners,
     this.lastActiveAt,
     required this.onTap,
@@ -486,7 +491,8 @@ class _RoomCardState extends State<_RoomCard> {
                       );
                     },
                   ),
-                if (widget.index == 0 && widget.listeners > 0) // Official Badge
+                if (widget.hostRole == 'doctor' ||
+                    widget.hostRole == 'admin') // Official Badge
                   Container(
                     padding: EdgeInsets.symmetric(
                       horizontal: 8.w,

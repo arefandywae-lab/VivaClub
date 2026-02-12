@@ -2,10 +2,12 @@ from rest_framework import serializers
 from .models import GhostProfile, GhostSubscription, Room
 
 class GhostProfileSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(source='user.role', read_only=True)
+
     class Meta:
         model = GhostProfile
-        fields = ['id', 'display_name', 'avatar_url', 'followers_count', 'is_active']
-        read_only_fields = ['id', 'followers_count']
+        fields = ['id', 'display_name', 'avatar_url', 'followers_count', 'is_active', 'role']
+        read_only_fields = ['id', 'followers_count', 'role']
 
     def validate_display_name(self, value):
         # Optional: Add profanity filter here

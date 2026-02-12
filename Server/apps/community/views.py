@@ -139,10 +139,15 @@ class RoomViewSet(viewsets.ModelViewSet):
             can_subscribe=True,
         )
 
+        # Metadata: {"role": "doctor"} or {"role": "patient"}
+        import json
+        metadata = json.dumps({'role': request.user.role})
+
         token = api.AccessToken(api_key, api_secret) \
             .with_identity(identity) \
             .with_name(name) \
             .with_grants(grant) \
+            .with_metadata(metadata) \
             .to_jwt()
 
         # Update room occupant tracking

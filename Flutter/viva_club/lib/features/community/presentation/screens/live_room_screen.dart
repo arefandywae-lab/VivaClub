@@ -5,6 +5,7 @@ import 'package:livekit_client/livekit_client.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/emoji_utils.dart';
+import 'package:viva_club/features/community/presentation/bloc/room_bloc.dart';
 import 'package:viva_club/features/community/data/livekit_room_service.dart';
 
 class LiveRoomScreen extends StatefulWidget {
@@ -173,6 +174,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         children: [
           GestureDetector(
             onTap: () {
+              // Refresh room list
+              context.read<RoomBloc>().add(RoomLoad());
+
               if (context.canPop()) {
                 context.pop();
               } else {
@@ -454,7 +458,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                       borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Icon(
-                      isLocal ? Icons.auto_awesome : Icons.verified_user,
+                      isLocal
+                          ? Icons.auto_awesome
+                          : (p.metadata?.contains('"role": "doctor"') == true ||
+                                p.metadata?.contains('"role": "admin"') == true)
+                          ? Icons.verified_user
+                          : null, // Only show if doctor/admin
                       size: 10.sp,
                       color: Colors.white,
                     ),
