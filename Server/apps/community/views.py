@@ -148,6 +148,8 @@ class RoomViewSet(viewsets.ModelViewSet):
             room=str(room.id),
             can_publish=is_host, # Only host can speak initially
             can_subscribe=True,
+            can_publish_data=True, # Allow chat
+            can_update_own_metadata=True, # Allow hand-raise
         )
 
         # Metadata: {"role": "doctor"} or {"role": "patient"}
@@ -215,18 +217,28 @@ class RoomViewSet(viewsets.ModelViewSet):
              return Response({"error": "LiveKit credentials not configured"}, status=500)
 
         try:
-            svc = api.RoomServiceClient(ws_url, api_key, api_secret)
-            # Grant can_publish=True
-            svc.update_participant_permissions(
-                room=str(room.id),
-                identity=target_identity,
-                permission=api.ParticipantPermission(
-                    can_subscribe=True,
-                    can_publish=True,
-                    can_publish_data=True,
-                ),
-            )
+            from asgiref.sync import async_to_sync
+
+            async def invite_speaker_async():
+                lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
+                try:
+                    await lkapi.room.update_participant_permissions(
+                        room=str(room.id),
+                        identity=target_identity,
+                        permission=api.ParticipantPermission(
+                            can_subscribe=True,
+                            can_publish=True,
+                            can_publish_data=True,
+                        )
+                    )
+                finally:
+                    await lkapi.aclose()
+
+            async_to_sync(invite_speaker_async)()
+            
             return Response({"message": "Invited speaker successfully"})
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=500)
 
