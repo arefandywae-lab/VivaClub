@@ -186,6 +186,9 @@ class RoomViewSet(viewsets.ModelViewSet):
         # If room is now empty, mark the time it became empty
         if room.listeners_count == 0:
             room.last_active_at = timezone.now()
+            
+        room.save()
+        return Response({"message": "Left room"})
         
     @decorators.action(detail=True, methods=['post'], url_path='invite')
     def invite(self, request, pk=None):
