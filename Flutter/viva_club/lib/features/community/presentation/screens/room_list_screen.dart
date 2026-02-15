@@ -4,8 +4,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:viva_club/core/theme/app_theme.dart';
 import '../../../../core/utils/emoji_utils.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../profile/presentation/bloc/profile_bloc.dart';
+import '../../data/following_repository.dart';
 import '../bloc/room_bloc.dart';
+import '../bloc/following_bloc.dart';
 
 class RoomListScreen extends StatefulWidget {
   const RoomListScreen({super.key});
@@ -14,9 +17,11 @@ class RoomListScreen extends StatefulWidget {
   State<RoomListScreen> createState() => _RoomListScreenState();
 }
 
-class _RoomListScreenState extends State<RoomListScreen> {
+class _RoomListScreenState extends State<RoomListScreen>
+    with SingleTickerProviderStateMixin {
   String? _selectedCategory;
   bool _isJoining = false; // Prevent double-tap
+  late TabController _tabController;
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -66,7 +71,14 @@ class _RoomListScreenState extends State<RoomListScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     context.read<RoomBloc>().add(RoomLoad());
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -124,7 +136,9 @@ class _RoomListScreenState extends State<RoomListScreen> {
                     if (_selectedCategory == null) {
                       return _buildCategoryGrid();
                     } else {
-                      return _buildRoomList(state.rooms);
+                      return _buildRoomListWithTabs(
+                        List<Map<String, dynamic>>.from(state.rooms),
+                      );
                     }
                   }
                   return Container();
@@ -319,6 +333,119 @@ class _RoomListScreenState extends State<RoomListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRoomListWithTabs(List<Map<String, dynamic>> allRooms) {
+    return Column(
+      children: [
+        // TabBar
+        Container(
+          color: Colors.white,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: AppTheme.primary,
+            unselectedLabelColor: AppTheme.textGrey,
+            indicatorColor: AppTheme.primary,
+            indicatorWeight: 3,
+            tabs: const [
+              Tab(text: 'All Rooms'),
+              Tab(text: 'Following'),
+            ],
+          ),
+        ),
+
+        // TabBarView
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              // All Rooms Tab
+              _buildRoomList(allRooms),
+
+              // Following Feed Tab
+              BlocProvider(
+                create: (context) =>
+                    FollowingBloc(FollowingRepository(DioClient()))
+                      ..add(FollowingFeedLoad()),
+                child: BlocBuilder<FollowingBloc, FollowingState>(
+                  builder: (context, state) {
+                    if (state is FollowingLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (state is FollowingFailure) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48.sp,
+                              color: Colors.red,
+                            ),
+                            SizedBox(height: 16.h),
+                            Text(
+                              'Failed to load following feed',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                color: AppTheme.textGrey,
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            ElevatedButton(
+                              onPressed: () {
+                                context.read<FollowingBloc>().add(
+                                  FollowingFeedLoad(),
+                                );
+                              },
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (state is FollowingFeedLoaded) {
+                      if (state.rooms.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('👻', style: TextStyle(fontSize: 64.sp)),
+                              SizedBox(height: 16.h),
+                              Text(
+                                'No rooms from followed ghosts',
+                                style: TextStyle(
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textDark,
+                                ),
+                              ),
+                              SizedBox(height: 8.h),
+                              Text(
+                                'Follow ghosts to see their rooms here',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: AppTheme.textGrey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return _buildRoomList(state.rooms);
+                    }
+
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

@@ -1,9 +1,16 @@
 from rest_framework import viewsets, permissions, decorators, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from .models import GhostProfile, GhostSubscription, Room
-from .serializers import GhostProfileSerializer, GhostSubscriptionSerializer, RoomSerializer
+from .models import GhostProfile, GhostSubscription, Room, Notification, FCMToken
+from .serializers import (
+    GhostProfileSerializer, 
+    GhostSubscriptionSerializer, 
+    RoomSerializer,
+    NotificationSerializer
+)
 from apps.utils.ghost_names import generate_ghost_name
+from .services import NotificationService
 import uuid
 
 # ... GhostProfileViewSet ...
@@ -68,6 +75,29 @@ class GhostSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         my_profile = get_object_or_404(GhostProfile, user=self.request.user)
         return GhostSubscription.objects.filter(follower=my_profile)
+    
+    @decorators.action(detail=False, methods=['get'], url_path='feed')
+    def feed(self, request):
+        """Get active rooms from followed ghosts"""
+        my_profile = get_object_or_404(GhostProfile, user=request.user)
+        
+        # Get IDs of ghosts I'm following
+        following_ids = GhostSubscription.objects.filter(
+            follower=my_profile
+        ).values_list('target_id', flat=True)
+        
+        # Get active rooms from followed ghosts
+        rooms = Room.objects.filter(
+            host_id__in=following_ids,
+            is_active=True
+        ).select_related('host').order_by('-created_at')
+        
+        serializer = RoomSerializer(rooms, many=True)
+        
+        return Response({
+            'rooms': serializer.data,
+            'count': rooms.count()
+        })
 
 class RoomViewSet(viewsets.ModelViewSet):
     """
@@ -111,7 +141,14 @@ class RoomViewSet(viewsets.ModelViewSet):
             title = f"{original_title}#{counter}"
             counter += 1
             
-        serializer.save(host=host_profile, title=title)
+        room = serializer.save(host=host_profile, title=title)
+        
+        # Send notifications to followers
+        NotificationService.send_ghost_room_notification(
+            ghost_id=host_profile.id,
+            room_id=room.id,
+            room_title=room.title
+        )
 
     @decorators.action(detail=True, methods=['post'], url_path='join')
     def join(self, request, pk=None):
@@ -241,4 +278,133 @@ class RoomViewSet(viewsets.ModelViewSet):
             import traceback
             traceback.print_exc()
             return Response({"error": str(e)}, status=500)
+    
+    @decorators.action(detail=False, methods=['get'], url_path='trending')
+    def trending(self, request):
+        """Get trending rooms sorted by trending score"""
+        from django.utils import timezone
+        
+        category = request.query_params.get('category')
+        limit = int(request.query_params.get('limit', 10))
+        
+        # Calculate trending score for active rooms
+        now = timezone.now()
+        rooms = Room.objects.filter(is_active=True)
+        
+        if category and category != 'general':
+            rooms = rooms.filter(category=category)
+        
+        # Calculate trending score
+        for room in rooms:
+            minutes_old = (now - room.created_at).total_seconds() / 60
+            age_penalty = max(0, 100 - (minutes_old * 2))
+            room.trending_score = (room.listeners_count * 10) + age_penalty
+            room.save(update_fields=['trending_score'])
+        
+        # Get top trending
+        trending_rooms = rooms.order_by('-trending_score')[:limit]
+        serializer = RoomSerializer(trending_rooms, many=True)
+        
+        return Response({'rooms': serializer.data})
+    
+    @decorators.action(detail=False, methods=['get'], url_path='scheduled')
+    def scheduled(self, request):
+        """Get scheduled rooms"""
+        from django.utils import timezone
+        
+        upcoming = request.query_params.get('upcoming', 'true') == 'true'
+        
+        rooms = Room.objects.filter(is_scheduled=True)
+        
+        if upcoming:
+            rooms = rooms.filter(scheduled_at__gte=timezone.now())
+        
+        rooms = rooms.order_by('scheduled_at')
+        serializer = RoomSerializer(rooms, many=True)
+        
+        return Response({'rooms': serializer.data})
+    
+    @decorators.action(detail=False, methods=['get'], url_path='search')
+    def search(self, request):
+        """Search rooms by title, description, tags"""
+        from django.db.models import Q
+        
+        query = request.query_params.get('q', '').strip()
+        category = request.query_params.get('category')
+        
+        if not query:
+            return Response({'rooms': [], 'count': 0})
+        
+        # Search in title, description, tags
+        rooms = Room.objects.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(tags__icontains=query),
+            is_active=True
+        )
+        
+        if category and category != 'general':
+            rooms = rooms.filter(category=category)
+        
+        serializer = RoomSerializer(rooms, many=True)
+        
+        return Response({
+            'rooms': serializer.data,
+            'count': rooms.count()
+        })
 
+
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    """List and manage user notifications"""
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        
+        unread_count = queryset.filter(is_read=False).count()
+        
+        return Response({
+            'notifications': serializer.data,
+            'unread_count': unread_count
+        })
+    
+    @decorators.action(detail=True, methods=['post'], url_path='read')
+    def mark_read(self, request, pk=None):
+        """Mark notification as read"""
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        return Response({'success': True})
+    
+    @decorators.action(detail=False, methods=['post'], url_path='read-all')
+    def mark_all_read(self, request):
+        """Mark all notifications as read"""
+        self.get_queryset().update(is_read=True)
+        return Response({'success': True})
+
+
+class FCMTokenView(APIView):
+    """Register FCM token for push notifications"""
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        token = request.data.get('token')
+        
+        if not token:
+            return Response({'error': 'Token required'}, status=400)
+        
+        # Create or update FCM token
+        fcm_token, created = FCMToken.objects.update_or_create(
+            user=request.user,
+            defaults={'token': token}
+        )
+        
+        return Response({
+            'success': True,
+            'message': 'FCM token registered' if created else 'FCM token updated'
+        })

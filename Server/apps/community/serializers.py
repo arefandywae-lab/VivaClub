@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import GhostProfile, GhostSubscription, Room
+from .models import GhostProfile, GhostSubscription, Room, Notification
 
 class GhostProfileSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source='user.role', read_only=True)
@@ -15,10 +15,11 @@ class GhostProfileSerializer(serializers.ModelSerializer):
 
 class GhostSubscriptionSerializer(serializers.ModelSerializer):
     target_details = GhostProfileSerializer(source='target', read_only=True)
+    followed_at = serializers.DateTimeField(source='created_at', read_only=True)
     
     class Meta:
         model = GhostSubscription
-        fields = ['id', 'follower', 'target', 'target_details', 'created_at']
+        fields = ['id', 'follower', 'target', 'target_details', 'followed_at', 'created_at']
         read_only_fields = ['id', 'follower', 'created_at']
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -26,5 +27,19 @@ class RoomSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Room
-        fields = ['id', 'title', 'host', 'host_details', 'category', 'listeners_count', 'last_active_at', 'is_active', 'created_at']
-        read_only_fields = ['id', 'host', 'listeners_count', 'last_active_at', 'is_active', 'created_at']
+        fields = [
+            'id', 'title', 'host', 'host_details', 'category',
+            'description', 'tags', 'scheduled_at', 'is_scheduled',
+            'trending_score', 'peak_listeners',
+            'listeners_count', 'last_active_at', 'is_active', 'created_at'
+        ]
+        read_only_fields = [
+            'id', 'host', 'listeners_count', 'trending_score',
+            'peak_listeners', 'last_active_at', 'is_active', 'created_at'
+        ]
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'type', 'title', 'body', 'data', 'is_read', 'created_at']
+        read_only_fields = ['id', 'created_at']
