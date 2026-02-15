@@ -276,11 +276,18 @@ class RoomViewSet(viewsets.ModelViewSet):
                     # DEBUG: Inspect available methods
                     print(f"DEBUG: LiveKit Room Service type: {type(lkapi.room)}")
                     
-                    # Correct usage based on python-livekit-server-sdk
-                    # update_participant(room: str, identity: str, permission: ParticipantPermission = None, ...)
+                    # Correct usage based on latest python-livekit-server-sdk
+                    # update_participant(room, identity, metadata=..., permission=...) 
+                    # If permission kwarg failed, it might expect 'permissions' or individual fields
+                    # Let's try passing permissions as a protobuf object or checking if method name is different
+                    
+                    # Based on standard unexpected kwarg 'permission', we should try 'permissions' (plural)
+                    # OR check if we need to use a different call. 
+                    # Given previous error, let's try the most common variation: 'permissions'
+                    
                     await lkapi.room.update_participant(
-                        str(room.id),        # positional arg: room
-                        target_identity,     # positional arg: identity
+                        room=str(room.id),
+                        identity=target_identity,
                         permission=api.ParticipantPermission(
                             can_subscribe=True,
                             can_publish=True,
