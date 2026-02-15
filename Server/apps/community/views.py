@@ -277,10 +277,10 @@ class RoomViewSet(viewsets.ModelViewSet):
                     print(f"DEBUG: LiveKit Room Service type: {type(lkapi.room)}")
                     
                     # Correct usage based on python-livekit-server-sdk
-                    # Usually: update_participant(room, identity, permission=..., metadata=..., name=...)
+                    # update_participant(room: str, identity: str, permission: ParticipantPermission = None, ...)
                     await lkapi.room.update_participant(
-                        room=str(room.id),
-                        identity=target_identity,
+                        str(room.id),        # positional arg: room
+                        target_identity,     # positional arg: identity
                         permission=api.ParticipantPermission(
                             can_subscribe=True,
                             can_publish=True,
