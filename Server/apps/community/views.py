@@ -297,6 +297,7 @@ class RoomViewSet(viewsets.ModelViewSet):
                     await lkapi.aclose()
 
             # Execute and check result
+            # Execute and check result
             result = async_to_sync(invite_speaker_async)()
             if isinstance(result, Response):
                 return result
@@ -305,6 +306,106 @@ class RoomViewSet(viewsets.ModelViewSet):
         except Exception as e:
             import traceback
             traceback.print_exc()
+            return Response({"error": str(e)}, status=500)
+    
+    @decorators.action(detail=True, methods=['post'], url_path='mute-participant')
+    def mute_participant(self, request, pk=None):
+        """Mute a participant (Host only)"""
+        room = self.get_object()
+        
+        # Verify Host
+        user_profile, _ = GhostProfile.objects.get_or_create(user=request.user)
+        if room.host != user_profile:
+             return Response({"error": "Only host can mute participants"}, status=403)
+
+        target_identity = request.data.get('identity')
+        track_sid = request.data.get('track_sid')
+        muted = request.data.get('muted', True)
+
+        if not target_identity or not track_sid:
+             return Response({"error": "Target identity and track_sid required"}, status=400)
+
+        # LiveKit API
+        from livekit import api
+        from livekit.api.twirp_client import TwirpError
+        import os
+        
+        api_key = os.environ.get('LIVEKIT_API_KEY')
+        api_secret = os.environ.get('LIVEKIT_API_SECRET')
+        ws_url = os.environ.get('LIVEKIT_API_URL')
+        
+        try:
+            from asgiref.sync import async_to_sync
+            async def mute_async():
+                lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
+                try:
+                    request_obj = api.MuteRoomTrackRequest(
+                        room=str(room.id),
+                        identity=target_identity,
+                        track_sid=track_sid,
+                        muted=muted
+                    )
+                    await lkapi.room.mute_published_track(request_obj)
+                except TwirpError as e:
+                    if str(e.code) == 'not_found':
+                        return Response({"error": "Participant or track not found"}, status=404)
+                    raise e
+                finally:
+                    await lkapi.aclose()
+
+            result = async_to_sync(mute_async)()
+            if isinstance(result, Response): return result
+            
+            return Response({"message": "Participant muted successfully"})
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+    @decorators.action(detail=True, methods=['post'], url_path='kick-participant')
+    def kick_participant(self, request, pk=None):
+        """Kick a participant from the room (Host only)"""
+        room = self.get_object()
+        
+        # Verify Host
+        user_profile, _ = GhostProfile.objects.get_or_create(user=request.user)
+        if room.host != user_profile:
+             return Response({"error": "Only host can kick participants"}, status=403)
+
+        target_identity = request.data.get('identity')
+        if not target_identity:
+             return Response({"error": "Target identity required"}, status=400)
+
+        # LiveKit API
+        from livekit import api
+        from livekit.api.twirp_client import TwirpError
+        import os
+        
+        api_key = os.environ.get('LIVEKIT_API_KEY')
+        api_secret = os.environ.get('LIVEKIT_API_SECRET')
+        ws_url = os.environ.get('LIVEKIT_API_URL')
+        
+        try:
+            from asgiref.sync import async_to_sync
+            async def kick_async():
+                lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
+                try:
+                    # Use semantic request object: RoomParticipantIdentity is used for RemoveParticipant
+                    request_obj = api.RoomParticipantIdentity(
+                        room=str(room.id),
+                        identity=target_identity
+                    )
+                    await lkapi.room.remove_participant(request_obj)
+                except TwirpError as e:
+                    if str(e.code) == 'not_found':
+                        return Response({"error": "Participant not found"}, status=404)
+                    raise e
+                finally:
+                    await lkapi.aclose()
+
+            result = async_to_sync(kick_async)()
+            if isinstance(result, Response): return result
+            
+            return Response({"message": "Participant kicked successfully"})
+        except Exception as e:
             return Response({"error": str(e)}, status=500)
     
     @decorators.action(detail=False, methods=['get'], url_path='trending')
