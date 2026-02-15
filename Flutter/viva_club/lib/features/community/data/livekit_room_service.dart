@@ -168,6 +168,27 @@ class LiveKitRoomService extends ChangeNotifier {
     }
   }
 
+  Future<void> muteParticipant(
+    String identity,
+    String trackSid,
+    bool muted,
+  ) async {
+    if (_activeRoomId != null) {
+      await communityRepository.muteParticipant(
+        _activeRoomId!,
+        identity,
+        trackSid,
+        muted,
+      );
+    }
+  }
+
+  Future<void> kickParticipant(String identity) async {
+    if (_activeRoomId != null) {
+      await communityRepository.kickParticipant(_activeRoomId!, identity);
+    }
+  }
+
   @override
   void dispose() {
     leave();

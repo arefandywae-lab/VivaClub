@@ -1,0 +1,170 @@
+  File "/usr/local/lib/python3.11/site-packages/django/views/decorators/csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/views.py", line 503, in dispatch
+    self.initial(request, *args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/views.py", line 420, in initial
+    self.perform_authentication(request)
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/views.py", line 330, in perform_authentication
+    request.user
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/request.py", line 232, in user
+    self._authenticate()
+  File "/usr/local/lib/python3.11/site-packages/rest_framework/request.py", line 385, in _authenticate
+    user_auth_tuple = authenticator.authenticate(self)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/rest_framework_simplejwt/authentication.py", line 51, in authenticate
+    return self.get_user(validated_token), validated_token
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/rest_framework_simplejwt/authentication.py", line 132, in get_user
+    user = self.user_model.objects.get(**{api_settings.USER_ID_FIELD: user_id})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 631, in get
+    num = len(clone)
+          ^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 368, in __len__
+    self._fetch_all()
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+HTTP b'POST' request for ['100.64.0.7', 31470]
+Sent 0 notifications (0 FCM) for room 59942c2f-a58a-4b79-9055-379e8be5f4e2
+HTTP 201 response started for ['100.64.0.7', 31470]
+HTTP close for ['100.64.0.7', 31470]
+"100.64.0.7" - - [15/Feb/2026:09:50:23 +0000] "POST /api/community/rooms/ HTTP/1.1" 201 603 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.7', 31470]
+100.64.0.7:31470 - - [15/Feb/2026:09:50:24] "POST /api/community/rooms/" 201 603
+HTTP b'POST' request for ['100.64.0.4', 44688]
+Bad Request: /api/community/rooms/
+Bad Request: /api/community/rooms/
+HTTP 400 response started for ['100.64.0.4', 44688]
+HTTP close for ['100.64.0.4', 44688]
+"100.64.0.4" - - [15/Feb/2026:09:50:25 +0000] "POST /api/community/rooms/ HTTP/1.1" 400 53 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.4', 44688]
+100.64.0.4:44688 - - [15/Feb/2026:09:50:26] "POST /api/community/rooms/" 400 53
+HTTP b'POST' request for ['100.64.0.5', 22950]
+Railway rate limit of 500 logs/sec reached for replica, update your application to reduce the logging rate. Messages dropped: 497
+Sent 0 notifications (0 FCM) for room 65463f1b-b0c9-4816-af5f-3d2f02bdd9f2
+HTTP 201 response started for ['100.64.0.5', 22950]
+HTTP close for ['100.64.0.5', 22950]
+"100.64.0.5" - - [15/Feb/2026:09:50:27 +0000] "POST /api/community/rooms/ HTTP/1.1" 201 605 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.5', 22950]
+100.64.0.5:22950 - - [15/Feb/2026:09:50:28] "POST /api/community/rooms/" 201 605
+HTTP b'POST' request for ['100.64.0.5', 22950]
+Sent 0 notifications (0 FCM) for room d76f1131-2427-488f-8486-6f4de657b1a6
+HTTP 201 response started for ['100.64.0.5', 22950]
+HTTP close for ['100.64.0.5', 22950]
+"100.64.0.5" - - [15/Feb/2026:09:50:29 +0000] "POST /api/community/rooms/ HTTP/1.1" 201 620 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.5', 22950]
+100.64.0.5:22950 - - [15/Feb/2026:09:50:30] "POST /api/community/rooms/" 201 620
+HTTP b'POST' request for ['100.64.0.6', 30780]
+Sent 0 notifications (0 FCM) for room 2a11ce18-408a-4693-974a-80d74e16bf97
+HTTP 201 response started for ['100.64.0.6', 30780]
+HTTP close for ['100.64.0.6', 30780]
+"100.64.0.6" - - [15/Feb/2026:09:50:31 +0000] "POST /api/community/rooms/ HTTP/1.1" 201 607 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.6', 30780]
+100.64.0.6:30780 - - [15/Feb/2026:09:50:32] "POST /api/community/rooms/" 201 607
+HTTP b'POST' request for ['100.64.0.6', 30780]
+Bad Request: /api/community/rooms/
+Bad Request: /api/community/rooms/
+HTTP 400 response started for ['100.64.0.6', 30780]
+HTTP close for ['100.64.0.6', 30780]
+"100.64.0.6" - - [15/Feb/2026:09:50:33 +0000] "POST /api/community/rooms/ HTTP/1.1" 400 53 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.6', 30780]
+100.64.0.6:30780 - - [15/Feb/2026:09:50:34] "POST /api/community/rooms/" 400 53
+HTTP b'POST' request for ['100.64.0.7', 52552]
+HTTP close for ['100.64.0.7', 52552]
+"100.64.0.7" - - [15/Feb/2026:09:50:35 +0000] "POST /api/community/rooms/59942c2f-a58a-4b79-9055-379e8be5f4e2/join/ HTTP/1.1" 200 694 "-" "python-requests/2.32.5"
+HTTP b'POST' request for ['100.64.0.4', 43562]
+Forbidden: /api/community/rooms/59942c2f-a58a-4b79-9055-379e8be5f4e2/invite/
+Forbidden: /api/community/rooms/59942c2f-a58a-4b79-9055-379e8be5f4e2/invite/
+HTTP 403 response started for ['100.64.0.4', 43562]
+HTTP close for ['100.64.0.4', 43562]
+"100.64.0.4" - - [15/Feb/2026:09:50:37 +0000] "POST /api/community/rooms/59942c2f-a58a-4b79-9055-379e8be5f4e2/invite/ HTTP/1.1" 403 41 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.4', 43562]
+100.64.0.4:43562 - - [15/Feb/2026:09:50:37] "POST /api/community/rooms/59942c2f-a58a-4b79-9055-379e8be5f4e2/invite/" 403 41
+
+HTTP b'POST' request for ['100.64.0.3', 19904]
+HTTP 200 response started for ['100.64.0.3', 19904]
+HTTP close for ['100.64.0.3', 19904]
+"100.64.0.3" - - [15/Feb/2026:09:50:38 +0000] "POST /api/community/rooms/59942c2f-a58a-4b79-9055-379e8be5f4e2/leave/ HTTP/1.1" 200 23 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.3', 19904]
+100.64.0.3:19904 - - [15/Feb/2026:09:50:39] "POST /api/community/rooms/59942c2f-a58a-4b79-9055-379e8be5f4e2/leave/" 200 23
+HTTP b'POST' request for ['100.64.0.4', 43562]
+HTTP 200 response started for ['100.64.0.4', 43562]
+HTTP close for ['100.64.0.4', 43562]
+"100.64.0.4" - - [15/Feb/2026:09:50:40 +0000] "POST /api/community/ghosts/147ec46e-c3bf-49e2-bdde-ff524753c885/follow/ HTTP/1.1" 200 46 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.4', 43562]
+100.64.0.4:43562 - - [15/Feb/2026:09:50:41] "POST /api/community/ghosts/147ec46e-c3bf-49e2-bdde-ff524753c885/follow/" 200 46
+HTTP b'POST' request for ['100.64.0.4', 43562]
+HTTP 200 response started for ['100.64.0.4', 43562]
+HTTP close for ['100.64.0.4', 43562]
+"100.64.0.4" - - [15/Feb/2026:09:50:42 +0000] "POST /api/community/ghosts/c185cf6a-89a7-42a9-9932-29d8617c0c15/follow/ HTTP/1.1" 200 45 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.4', 43562]
+100.64.0.4:43562 - - [15/Feb/2026:09:50:43] "POST /api/community/ghosts/c185cf6a-89a7-42a9-9932-29d8617c0c15/follow/" 200 45
+HTTP b'GET' request for ['100.64.0.3', 19920]
+HTTP 200 response started for ['100.64.0.3', 19920]
+HTTP close for ['100.64.0.3', 19920]
+"100.64.0.3" - - [15/Feb/2026:09:50:44 +0000] "GET /api/community/following/ HTTP/1.1" 200 804 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.3', 19920]
+100.64.0.3:19920 - - [15/Feb/2026:09:50:45] "GET /api/community/following/" 200 804
+HTTP b'GET' request for ['100.64.0.3', 19920]
+HTTP 200 response started for ['100.64.0.3', 19920]
+HTTP close for ['100.64.0.3', 19920]
+"100.64.0.3" - - [15/Feb/2026:09:50:46 +0000] "GET /api/community/following/feed/ HTTP/1.1" 200 1854 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.3', 19920]
+100.64.0.3:19920 - - [15/Feb/2026:09:50:47] "GET /api/community/following/feed/" 200 1854
+HTTP b'POST' request for ['100.64.0.5', 19082]
+HTTP 200 response started for ['100.64.0.5', 19082]
+HTTP close for ['100.64.0.5', 19082]
+"100.64.0.5" - - [15/Feb/2026:09:50:48 +0000] "POST /api/community/fcm-token/ HTTP/1.1" 200 49 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.5', 19082]
+100.64.0.5:19082 - - [15/Feb/2026:09:50:49] "POST /api/community/fcm-token/" 200 49
+HTTP b'GET' request for ['100.64.0.7', 46572]
+HTTP 200 response started for ['100.64.0.7', 46572]
+HTTP close for ['100.64.0.7', 46572]
+"100.64.0.7" - - [15/Feb/2026:09:50:49 +0000] "GET /api/community/notifications/ HTTP/1.1" 200 37 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.7', 46572]
+100.64.0.7:46572 - - [15/Feb/2026:09:50:50] "GET /api/community/notifications/" 200 37
+HTTP b'GET' request for ['100.64.0.5', 19082]
+HTTP 200 response started for ['100.64.0.5', 19082]
+HTTP close for ['100.64.0.5', 19082]
+"100.64.0.5" - - [15/Feb/2026:09:50:52 +0000] "GET /api/community/rooms/trending/?limit=20 HTTP/1.1" 200 3099 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.5', 19082]
+100.64.0.5:19082 - - [15/Feb/2026:09:50:53] "GET /api/community/rooms/trending/?limit=20" 200 3099
+HTTP b'GET' request for ['100.64.0.3', 33198]
+HTTP 200 response started for ['100.64.0.3', 33198]
+HTTP close for ['100.64.0.3', 33198]
+"100.64.0.3" - - [15/Feb/2026:09:50:54 +0000] "GET /api/community/rooms/search/?q=test HTTP/1.1" 200 3109 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.3', 33198]
+100.64.0.3:33198 - - [15/Feb/2026:09:50:55] "GET /api/community/rooms/search/?q=test" 200 3109
+HTTP b'GET' request for ['100.64.0.3', 33198]
+HTTP 200 response started for ['100.64.0.3', 33198]
+HTTP close for ['100.64.0.3', 33198]
+"100.64.0.3" - - [15/Feb/2026:09:50:56 +0000] "GET /api/community/rooms/search/?category=anxiety HTTP/1.1" 200 22 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.3', 33198]
+100.64.0.3:33198 - - [15/Feb/2026:09:50:56] "GET /api/community/rooms/search/?category=anxiety" 200 22
+HTTP b'GET' request for ['100.64.0.7', 46586]
+HTTP 200 response started for ['100.64.0.7', 46586]
+HTTP close for ['100.64.0.7', 46586]
+"100.64.0.7" - - [15/Feb/2026:09:50:58 +0000] "GET /api/community/rooms/ HTTP/1.1" 200 3089 "-" "python-requests/2.32.5"
+HTTP response complete for ['100.64.0.7', 46586]
+100.64.0.7:46586 - - [15/Feb/2026:09:50:59] "GET /api/community/rooms/" 200 3089

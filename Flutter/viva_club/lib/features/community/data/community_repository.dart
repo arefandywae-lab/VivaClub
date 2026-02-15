@@ -54,11 +54,37 @@ class CommunityRepository {
       );
     } catch (e) {
       if (e.runtimeType.toString() == 'DioException') {
-        // Simple check, or import DioException
         final res = (e as dynamic).response;
         print('Invite Error: ${res?.statusCode} - ${res?.data}');
       }
       throw 'Failed to invite speaker: $e';
+    }
+  }
+
+  Future<void> muteParticipant(
+    String roomId,
+    String identity,
+    String trackSid,
+    bool muted,
+  ) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.muteParticipant(roomId),
+        data: {'identity': identity, 'track_sid': trackSid, 'muted': muted},
+      );
+    } catch (e) {
+      throw 'Failed to mute participant: $e';
+    }
+  }
+
+  Future<void> kickParticipant(String roomId, String identity) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.kickParticipant(roomId),
+        data: {'identity': identity},
+      );
+    } catch (e) {
+      throw 'Failed to kick participant: $e';
     }
   }
 }

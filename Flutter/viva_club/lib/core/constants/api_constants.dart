@@ -30,6 +30,10 @@ class ApiConstants {
       '/api/community/rooms/$roomId/leave/';
   static String inviteSpeaker(String roomId) =>
       '/api/community/rooms/$roomId/invite/';
+  static String muteParticipant(String roomId) =>
+      '/api/community/rooms/$roomId/mute-participant/';
+  static String kickParticipant(String roomId) =>
+      '/api/community/rooms/$roomId/kick-participant/';
 
   // Booking Endpoints
   static const String appointments = '/api/bookings/slots/';

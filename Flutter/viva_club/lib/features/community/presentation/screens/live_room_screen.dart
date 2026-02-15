@@ -259,7 +259,15 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           ),
           itemCount: speakers.length,
           itemBuilder: (context, index) {
-            return _buildParticipantAvatar(speakers[index], true, index);
+            final p = speakers[index];
+            return GestureDetector(
+              onTap: () {
+                if (widget.isHost && p is! LocalParticipant) {
+                  _showSpeakerOptionsDialog(context, p);
+                }
+              },
+              child: _buildParticipantAvatar(p, true, index),
+            );
           },
         ),
       ],
@@ -542,13 +550,21 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Invite to Speak'),
-        content: Text('Do you want to invite ${p.name} to become a speaker?'),
+        title: Text('Manage ${p.name}'),
+        content: Text('What would you like to do with ${p.name}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
+          if (widget.isHost)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog first
+                _showKickConfirmation(context, p);
+              },
+              child: const Text('Kick', style: TextStyle(color: Colors.red)),
+            ),
           TextButton(
             onPressed: () {
               context.read<LiveKitRoomService>().inviteSpeaker(p.identity);
@@ -557,7 +573,84 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 SnackBar(content: Text('Invited ${p.name} to speak')),
               );
             },
-            child: const Text('Invite'),
+            child: const Text('Invite to Speak'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSpeakerOptionsDialog(BuildContext context, Participant p) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Manage Speaker ${p.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (p.audioTrackPublications.isNotEmpty)
+              ...p.audioTrackPublications.map((track) {
+                final isMuted = track.muted;
+                return ListTile(
+                  leading: Icon(isMuted ? Icons.mic_off : Icons.mic),
+                  title: Text(isMuted ? 'Unmute' : 'Mute'),
+                  onTap: () {
+                    context.read<LiveKitRoomService>().muteParticipant(
+                      p.identity,
+                      track.sid,
+                      !isMuted,
+                    );
+                    Navigator.pop(context);
+                  },
+                );
+              }),
+            ListTile(
+              leading: const Icon(
+                Icons.remove_circle_outline,
+                color: Colors.red,
+              ),
+              title: const Text(
+                'Kick from Room',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showKickConfirmation(context, p);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showKickConfirmation(BuildContext context, Participant p) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Kick'),
+        content: Text('Are you sure you want to kick ${p.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<LiveKitRoomService>().kickParticipant(p.identity);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('Kicked ${p.name}')));
+            },
+            child: const Text('Kick', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

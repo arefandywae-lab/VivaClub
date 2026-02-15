@@ -101,14 +101,15 @@
 **Impact:** Better engagement, fun factor  
 **Estimated Time:** 3-5 days
 
+- [x] **Backend Endpoints** (Hand Raise, Mute, Kick) ✅
 - [ ] Emoji reactions (👏, ❤️, 😂, 🤔)
 - [ ] Text chat in room (optional)
 - [ ] Pin messages (Host only)
 - [ ] Share room link
 
 **Database:** Minimal changes  
-**APIs Needed:** 2 endpoints  
-**Frontend:** UI components
+**APIs Needed:** Done ✅
+**Frontend:** UI components needed
 
 ---
 
