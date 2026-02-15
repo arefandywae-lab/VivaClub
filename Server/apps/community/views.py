@@ -273,7 +273,11 @@ class RoomViewSet(viewsets.ModelViewSet):
             async def invite_speaker_async():
                 lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
                 try:
-                    # Use update_participant to set permissions
+                    # DEBUG: Inspect available methods
+                    print(f"DEBUG: LiveKit Room Service type: {type(lkapi.room)}")
+                    print(f"DEBUG: LiveKit Room Service dir: {dir(lkapi.room)}")
+                    
+                    # Try update_participant which is standard in newer SDKs
                     await lkapi.room.update_participant(
                         room=str(room.id),
                         identity=target_identity,
