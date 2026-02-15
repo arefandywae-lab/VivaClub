@@ -288,6 +288,11 @@ class RoomViewSet(viewsets.ModelViewSet):
                     )
                     
                     await lkapi.room.update_participant(request_obj)
+                
+                except api.TwirpError as e:
+                    if e.code == 'not_found':
+                        return Response({"error": "User is not active in this room (must join first)"}, status=404)
+                    raise e
                 finally:
                     await lkapi.aclose()
 
