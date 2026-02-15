@@ -1,0 +1,32 @@
+
+============================================================
+CLUBHOUSE FEATURES & STRESS TEST SUMMARY
+============================================================
+
+Test Date: 2026-02-15 16:41:21.053392
+Duration: 5.03s
+
+ENTITIES CREATED:
+  Users:  9/15
+  Rooms:  3/12
+
+TEST RESULTS:
+  Total Tests:   77
+  Passed:        60
+  Failed:        17
+  Success Rate:  77.92%
+
+FEATURES TESTED:
+  ✓ User Registration & Authentication
+  ✓ Ghost Profile Management
+  ✓ Room Creation & Management
+  ✓ Join/Leave Room
+  ✓ Invite to Speak
+  ✓ Following System
+  ✓ Notifications & FCM
+  ✓ Enhanced Discovery (Trending, Search)
+  ✓ Concurrent Room Joins (Stress Test)
+
+============================================================
+Log File: test_logs/clubhouse_test_20260215_164017.log
+============================================================

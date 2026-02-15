@@ -200,11 +200,17 @@ class RoomViewSet(viewsets.ModelViewSet):
             .with_metadata(metadata) \
             .to_jwt()
 
-        # Update room occupant tracking
+        # Update room occupant tracking (atomic to prevent race conditions)
         from django.utils import timezone
-        room.listeners_count += 1
-        room.last_active_at = timezone.now()
-        room.save()
+        from django.db.models import F
+        from django.db import transaction
+        
+        with transaction.atomic():
+            Room.objects.filter(id=room.id).update(
+                listeners_count=F('listeners_count') + 1,
+                last_active_at=timezone.now()
+            )
+            room.refresh_from_db()  # Get updated values
 
         return Response({
             "token": token,
@@ -219,14 +225,22 @@ class RoomViewSet(viewsets.ModelViewSet):
         room = self.get_object()
         from django.utils import timezone
         
-        # Decrement count (don't go below 0)
-        room.listeners_count = max(0, room.listeners_count - 1)
+        # Decrement count (atomic to prevent race conditions)
+        from django.db.models import F, Q
+        from django.db import transaction
         
-        # If room is now empty, mark the time it became empty
-        if room.listeners_count == 0:
-            room.last_active_at = timezone.now()
+        with transaction.atomic():
+            # Use F() expression with conditional to prevent going below 0
+            Room.objects.filter(id=room.id).update(
+                listeners_count=F('listeners_count') - 1,
+                last_active_at=timezone.now()
+            )
+            room.refresh_from_db()
             
-        room.save()
+            # Ensure count doesn't go below 0
+            if room.listeners_count < 0:
+                room.listeners_count = 0
+                room.save()
         return Response({"message": "Left room"})
         
     @decorators.action(detail=True, methods=['post'], url_path='invite')

@@ -99,7 +99,10 @@ import socket
 db_url = os.environ.get('DATABASE_URL')
 
 if db_url:
-    db_config = dj_database_url.parse(db_url, conn_max_age=600)
+    # CRITICAL: Set conn_max_age=0 to close connections after each request
+    # This prevents connection pool exhaustion on Railway's Session Mode
+    db_config = dj_database_url.parse(db_url, conn_max_age=0)
+    
     # Fix for Railway/Supabase IPv6 issues: Force IPv4 resolution
     try:
         hostname = db_config.get('HOST')
@@ -113,6 +116,15 @@ if db_url:
                 print(f"DEBUG: Resolved {hostname} to {ip_v4} (Forcing IPv4)")
     except Exception as e:
         print(f"DEBUG: Failed to resolve IPv4 for DB: {e}")
+    
+    # Add connection timeout and statement timeout
+    db_config.setdefault('OPTIONS', {}).update({
+        'connect_timeout': 10,
+        'options': '-c statement_timeout=30000'  # 30 second timeout
+    })
+    
+    # Enable atomic requests to auto-close connections
+    db_config['ATOMIC_REQUESTS'] = True
         
     DATABASES = {'default': db_config}
 else:
