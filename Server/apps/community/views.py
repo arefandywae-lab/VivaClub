@@ -269,6 +269,7 @@ class RoomViewSet(viewsets.ModelViewSet):
 
         try:
             from asgiref.sync import async_to_sync
+            from livekit.api.twirp_client import TwirpError
 
             async def invite_speaker_async():
                 lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
@@ -288,15 +289,21 @@ class RoomViewSet(viewsets.ModelViewSet):
                     )
                     
                     await lkapi.room.update_participant(request_obj)
+                    return None # Success
                 
-                except api.TwirpError as e:
-                    if e.code == 'not_found':
+                except TwirpError as e:
+                    print(f"DEBUG: Caught TwirpError: {e}, code: {e.code}, type: {type(e.code)}")
+                    # Handle known business logic errors (user not found in room)
+                    if str(e.code) == 'not_found' or str(e.code) == 'TwirpErrorCode.NOT_FOUND':
                         return Response({"error": "User is not active in this room (must join first)"}, status=404)
                     raise e
                 finally:
                     await lkapi.aclose()
 
-            async_to_sync(invite_speaker_async)()
+            # Execute and check result
+            result = async_to_sync(invite_speaker_async)()
+            if isinstance(result, Response):
+                return result
             
             return Response({"message": "Invited speaker successfully"})
         except Exception as e:
