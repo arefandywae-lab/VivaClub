@@ -274,9 +274,6 @@ class RoomViewSet(viewsets.ModelViewSet):
             async def invite_speaker_async():
                 lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
                 try:
-                    # DEBUG: Inspect available methods
-                    print(f"DEBUG: LiveKit Room Service type: {type(lkapi.room)}")
-                    
                     # Correct usage: pass a single request object
                     request_obj = api.UpdateParticipantRequest(
                         room=str(room.id),
@@ -292,7 +289,6 @@ class RoomViewSet(viewsets.ModelViewSet):
                     return None # Success
                 
                 except TwirpError as e:
-                    print(f"DEBUG: Caught TwirpError: {e}, code: {e.code}, type: {type(e.code)}")
                     # Handle known business logic errors (user not found in room)
                     if str(e.code) == 'not_found' or str(e.code) == 'TwirpErrorCode.NOT_FOUND':
                         return Response({"error": "User is not active in this room (must join first)"}, status=404)
