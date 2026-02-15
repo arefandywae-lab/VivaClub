@@ -275,9 +275,9 @@ class RoomViewSet(viewsets.ModelViewSet):
                 try:
                     # DEBUG: Inspect available methods
                     print(f"DEBUG: LiveKit Room Service type: {type(lkapi.room)}")
-                    print(f"DEBUG: LiveKit Room Service dir: {dir(lkapi.room)}")
                     
-                    # Try update_participant which is standard in newer SDKs
+                    # Correct usage based on python-livekit-server-sdk
+                    # Usually: update_participant(room, identity, permission=..., metadata=..., name=...)
                     await lkapi.room.update_participant(
                         room=str(room.id),
                         identity=target_identity,
