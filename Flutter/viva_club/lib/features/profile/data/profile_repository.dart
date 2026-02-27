@@ -39,7 +39,43 @@ class ProfileRepository {
       final response = await _dioClient.dio.get(ApiConstants.trustScore);
       return response.data;
     } catch (e) {
-      return {'score': 100}; // Fallback default
+      return {'score': 100};
     }
+  }
+
+  /// Update ghost profile bio (PATCH)
+  Future<Map<String, dynamic>> updateBio(String bio) async {
+    try {
+      final response = await _dioClient.dio.patch(
+        ApiConstants.ghostProfileMe,
+        data: {'bio': bio},
+      );
+      return response.data;
+    } catch (e) {
+      throw 'Failed to update bio';
+    }
+  }
+
+  /// Get list of blocked users
+  Future<List<dynamic>> getBlockedUsers() async {
+    try {
+      final response = await _dioClient.dio.get(ApiConstants.blocks);
+      if (response.data is Map && response.data.containsKey('results')) {
+        return response.data['results'];
+      }
+      return response.data is List ? response.data : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Block a user
+  Future<void> blockUser(String userId) async {
+    await _dioClient.dio.post(ApiConstants.blocks, data: {'blocked': userId});
+  }
+
+  /// Unblock a user by their user-id (which is the pk in the block object)
+  Future<void> unblockUser(String blockedUserId) async {
+    await _dioClient.dio.delete(ApiConstants.blockUser(blockedUserId));
   }
 }

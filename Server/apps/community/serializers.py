@@ -57,7 +57,16 @@ class RoomReportSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'reporter', 'status', 'created_at']
 
 class BlockedUserSerializer(serializers.ModelSerializer):
+    blocked_details = serializers.SerializerMethodField()
+
     class Meta:
         model = BlockedUser
-        fields = ['id', 'blocked', 'created_at']
+        fields = ['id', 'blocked', 'blocked_details', 'created_at']
         read_only_fields = ['id', 'blocker', 'created_at']
+
+    def get_blocked_details(self, obj):
+        try:
+            ghost = GhostProfile.objects.get(user=obj.blocked)
+            return {'display_name': ghost.display_name, 'avatar_url': ghost.avatar_url}
+        except GhostProfile.DoesNotExist:
+            return {'display_name': 'Ghost User', 'avatar_url': None}

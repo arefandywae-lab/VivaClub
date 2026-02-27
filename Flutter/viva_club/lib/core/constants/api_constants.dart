@@ -13,6 +13,10 @@ class ApiConstants {
   static const String rooms = '/api/community/rooms/';
   static const String reports = '/api/community/reports/';
   static const String trustScore = '/api/community/trust-score/me/';
+  static const String ghostProfileMe = '/api/community/ghosts/me/';
+  static const String blocks = '/api/community/blocks/';
+  static String blockUser(String userId) =>
+      '/api/community/blocks/$userId/unblock/';
   static String joinRoom(String roomId) => '/api/community/rooms/$roomId/join/';
   static String leaveRoom(String roomId) =>
       '/api/community/rooms/$roomId/leave/';

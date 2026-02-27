@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-// import 'package:go_router/go_router.dart';
+import 'package:go_router/go_router.dart';
 import 'package:viva_club/core/theme/app_theme.dart';
 import '../../../../core/utils/emoji_utils.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../../profile/data/profile_repository.dart';
 import '../bloc/profile_bloc.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -17,6 +18,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _profileRepo = ProfileRepository();
+  final _bioController = TextEditingController();
 
   @override
   void initState() {
@@ -29,6 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -94,10 +98,18 @@ class _ProfileScreenState extends State<ProfileScreen>
         ? 'Member since ${_formatDate(user['date_joined'])}'
         : 'Welcome to VivaClub';
 
+    final bio = ghostProfile?['bio'] as String? ?? '';
+
     return Column(
       children: [
         _buildHeader(displayName, memberSince, state.trustScore),
-        SizedBox(height: 20.h),
+        SizedBox(height: 16.h),
+        // Bio section
+        _buildBioSection(bio),
+        SizedBox(height: 12.h),
+        // Action row: Following + Blocked Users
+        _buildActionRow(),
+        SizedBox(height: 8.h),
         _buildTabBar(),
         Expanded(
           child: TabBarView(
@@ -109,6 +121,279 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       ],
+    );
+  }
+
+  // ──────────────────────────────────────────────
+  // BIO SECTION
+  // ──────────────────────────────────────────────
+  Widget _buildBioSection(String bio) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24.w),
+      child: GestureDetector(
+        onTap: () => _showBioEditDialog(bio),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(color: AppTheme.skyBlue.withValues(alpha: 0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '✍️ About Me',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textGrey,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Text(
+                      bio.isEmpty ? 'Tap to add your bio...' : bio,
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        color: bio.isEmpty
+                            ? Colors.grey.shade400
+                            : AppTheme.textDark,
+                        fontStyle: bio.isEmpty
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                        height: 1.4,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Icon(
+                Icons.edit_rounded,
+                size: 18.sp,
+                color: AppTheme.primary.withValues(alpha: 0.6),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showBioEditDialog(String currentBio) {
+    _bioController.text = currentBio;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+          ),
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                '✍️ Edit Your Bio',
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                'Tell others a bit about yourself (anonymous).',
+                style: TextStyle(fontSize: 12.sp, color: AppTheme.textGrey),
+              ),
+              SizedBox(height: 16.h),
+              TextField(
+                controller: _bioController,
+                maxLength: 200,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: 'I enjoy sharing my feelings in safe spaces...',
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 13.sp,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                    borderSide: BorderSide.none,
+                  ),
+                  counterStyle: TextStyle(
+                    fontSize: 11.sp,
+                    color: AppTheme.textGrey,
+                  ),
+                ),
+              ),
+              SizedBox(height: 12.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 14.h),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        try {
+                          await _profileRepo.updateBio(
+                            _bioController.text.trim(),
+                          );
+                          if (mounted) {
+                            context.read<ProfileBloc>().add(ProfileLoad());
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✅ Bio updated!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────
+  // ACTION ROW (Following + Blocked)
+  // ──────────────────────────────────────────────
+  Widget _buildActionRow() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24.w),
+      child: Row(
+        children: [
+          _buildActionCard(
+            icon: '👥',
+            label: 'Following',
+            onTap: () => context.push('/following'),
+          ),
+          SizedBox(width: 12.w),
+          _buildActionCard(
+            icon: '🚫',
+            label: 'Blocked',
+            onTap: () => context.push('/blocked_users'),
+          ),
+          SizedBox(width: 12.w),
+          _buildActionCard(
+            icon: '🔒',
+            label: 'Privacy',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Privacy settings coming soon')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required String icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.r),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(icon, style: TextStyle(fontSize: 22.sp)),
+              SizedBox(height: 4.h),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textDark,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

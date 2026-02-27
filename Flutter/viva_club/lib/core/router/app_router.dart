@@ -12,6 +12,8 @@ import '../../features/community/presentation/screens/live_room_screen.dart';
 import '../../features/home/presentation/screens/dashboard_screen.dart';
 import '../../features/clinical/presentation/screens/telemed_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/community/presentation/screens/following_list_screen.dart';
+import '../../features/profile/presentation/screens/blocked_users_screen.dart';
 import '../widgets/scaffold_with_nav_bar.dart';
 
 // Keys for navigation state preservation
@@ -85,6 +87,16 @@ class AppRouter {
         path: '/create_room',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const CreateRoomScreen(),
+      ),
+      GoRoute(
+        path: '/blocked_users',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BlockedUsersScreen(),
+      ),
+      GoRoute(
+        path: '/following',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const FollowingListScreen(),
       ),
 
       // Screens WITH Bottom Nav (ShellRoute)
