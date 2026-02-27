@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. Reverse Proxy (Handles HTTPS automatically)
   caddy:
@@ -35,7 +33,7 @@ services:
     image: redis:7-alpine
     container_name: vivaclub_redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-viva-redis-pass}
+    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD:-viva-redis-pass}" ]
     networks:
       - vivanet
 
