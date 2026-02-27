@@ -1,0 +1,31 @@
+# LiveKit Server Configuration Template
+# For VivaClub VPS (Self-hosted 100%)
+
+port: 7880
+bind_addresses:
+    - ""
+rtc:
+    tcp_port: 7881
+    port_range_start: 50000
+    port_range_end: 60000
+    use_external_ip: true
+    enable_loopback_candidate: false
+    # MUST REPLACE node_ip WITH VPS IP.
+    node_ip: "217.216.108.16"
+
+redis:
+    address: "localhost:6379"
+    username: ""
+    password: "viva-redis-pass"
+    db: 0
+    use_tls: false
+
+keys:
+    # IMPORTANT: Update with your generated API keys
+    # To generate new keys: docker run --rm livekit/livekit-cli generate-keys
+    APIy9W5hQkRkZQa: Qz5Y9ZQaH3k6s4Fq2f7zW3jV5uK9LxP1yNmB4vRcTxw
+
+logging:
+    json: false
+    level: info
+    pion_level: error

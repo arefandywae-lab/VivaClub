@@ -1,0 +1,25 @@
+# Caddyfile for Auto-HTTPS configuration
+
+# 1. Main API / Web Traffic
+vivaclubs.site, www.vivaclubs.site {
+    # Serve Static Files
+    handle_path /static/* {
+        root * /app/backend/staticfiles
+        file_server
+    }
+
+    # Serve Media Files
+    handle_path /media/* {
+        root * /app/backend/mediafiles
+        file_server
+    }
+
+    # Proxy to Django Application
+    reverse_proxy vivaclub_backend:8000
+}
+
+# 2. LiveKit Traffic
+# Note: LiveKit is running on host network, so proxy to localhost
+livekit.vivaclubs.site {
+    reverse_proxy localhost:7880
+}

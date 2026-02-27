@@ -1,64 +1,180 @@
-# Slide 1: Title Slide
-**Title:** VivaClub: Midterm Progress Presentation
-**Subtitle:** A Real-time Audio Community Platform
-**Team Members:** 
-- [Your Name 1] - ID: [Your Student ID 1]
-- [Your Name 2] - ID: [Your Student ID 2]
+# Slide 1: หน้าเปิด (Title Slide)
+**หัวข้อ:** VivaClub - แพลตฟอร์มโซเชียลเสียงเรียลไทม์ และ ระบบปรึกษาแพทย์ออนไลน์
+**ประเภทโปรเจกต์:** แอปพลิเคชันส่งเสริมสุขภาพจิตด้วยระบบ Telemedicine
+**ทีมพัฒนา:**
+1. Arefandy waeouseng 6610625037
+2. Phuritat Lertkitpaisarn 6610685049
+
+*บทพูด (คำแนะนำ): "สวัสดีครับ วันนี้กลุ่มของเราจะมานำเสนอความคืบหน้าของโครงงาน VivaClub ซึ่งเป็นแอปพลิเคชันที่ผสมผสาน Social Audio (อารมณ์คลับเฮาส์) เข้ากับบริการทางการแพทย์ครับ"*
 
 ---
 
-# Slide 2: Project Overview
-**What is VivaClub?**
-- An audio-first community platform (inspired by Clubhouse).
-- Allows users to create and join live voice-chat rooms.
-- Extends the traditional social audio concept by integrating **Telemedicine/Professional Booking** features for private, scheduled audio consultations.
+# Slide 2: ที่มาของปัญหา (Problem Statement)
+จากการลงพื้นที่ศึกษาแอปพลิเคชันที่มีอยู่ในตลาดด้านสาธารณสุขยอดนิยม (อ้างอิง: Alljit และแพลตฟอร์มอื่นๆ) เราพบ "Pain Point" ทางโครงสร้างที่สำคัญ 4 ประการ ที่เป็นอุปสรรคต่อการช่วยเหลือผู้ที่มีความเครียด:
+1. **Critical Access (เข้าถึงยากยามวิกฤต):** คิวหาหมอยาวเป็นเดือน เวลาคนไข้อาการกำเริบหนัก (SOS) มักจะต้องรอ หรือได้แค่คุยกับอาสาสมัครที่ไม่ใช่แพทย์
+2. **Privacy Concern (กลัวถูกตีตรา):** ผู้ป่วยทางจิตเวชมักไม่อยากให้ใครรู้ว่าตัวเองเข้ามารับการรักษา
+3. **Toxic Community (สังคมเป็นพิษ):** การเข้ามาป่วนด้วยรูปโป๊ หรือการรุมรีพอร์ตกลั่นแกล้งกันโดยที่แอดมินดูแลไม่ทัน
+4. **Passive Help (ได้แค่อ่านเนื้อหา):** ไม่มีการโต้ตอบแบบเรียลไทม์กับผู้เชี่ยวชาญ ทำให้รู้สึกเหมือนคุยกับกำแพง
 
 ---
 
-# Slide 3: Technology Stack
-- **Frontend:** Flutter (Cross-platform Mobile UI)
-- **Backend:** Django REST Framework (Python)
-- **Database:** PostgreSQL
-- **Real-Time Audio:** LiveKit (WebRTC Engine)
-- **Deployment:** Docker & Railway
+# Slide 3: แนวทางการแก้ปัญหา (The VivaClub Solutions)
+VivaClub จึงถูกสร้างขึ้นมาเพื่ออุดช่องโหว่เหล่านั้น ผ่าน 4 Core Concepts:
+1. **SOS Triage System:** ระบบคัดกรองเร่งด่วน ต่อสายตรงหาจิตแพทย์
+2. **Ghost Profile System:** เล่นได้โดยไม่มีใครรู้ว่าเป็นใคร
+3. **User Trust Score & Mod:** กระจายศูนย์อำนาจ ให้ AI และผู้เล่นน้ำดีช่วยกันแจกแบนคนป่วน
+4. **Interactive Live Podcast:** แพลตฟอร์มเสียงที่สามารถ "ยกมือ" ถามหมอได้สดๆ
 
 ---
 
-# Slide 4: Midterm Progress - Backend
-**What we've built so far:**
-- **Secure Auth:** JWT Authentication & Custom User Profiles.
-- **Room APIs:** Endpoints to Create, List, Join, and Leave rooms.
-- **WebRTC Token Generation:** Secure handshake giving clients access to LiveKit Audio Channels.
-- **Moderation APIs:** Integration with LiveKit Server API to *Force Mute* or *Kick* participants dynamically via the backend.
+# Slide 4: ฟีเจอร์ชูโรง 1 - การเข้าถึงความช่วยเหลือวิกฤต (SOS Triage System)
+**ปัญหา:** ผู้ใช้งานที่มีความเสี่ยงสูง (Severe Critical) ต้องรอคิวนาน
+**การทำงาน (Logic):** 
+- ให้ผู้ใช้ทำแบบประเมิน **PHQ-9 (แบบคัดกรองโรคซึมเศร้า 9 คำถาม)** 
+- หาก Algorithm คำนวณแล้วได้ **คะแนนสูง (> 19 คะแนน)** ระบบจะปลดล็อกปุ่มพิเศษ **"SOS Call"** ในแอปทันที
+- คำขอจะวิ่งเข้าช่อง Priority Queue (คิวพิเศษ) ดึงสายให้คุยกับ **"แพทย์เวร (Standby Doctor)"** ฟรี 15 นาที เพื่อประเมินอาการเบื้องต้น หรือหาทางออกฉุกเฉิน
+- ป้องกันการสแปมปุ่ม: จำกัดสิทธิ์นี้เดือนละ 1 ครั้ง หรือต่อ 1 ผู้ใช้งาน
 
 ---
 
-# Slide 5: Midterm Progress - Frontend (Mobile App)
-**What we've built so far:**
-- **Live Room UI:** Grids displaying "Speakers" and "Listeners".
-- **Dynamic Interactions:**
-  - **Hand Raise:** Listeners can push a button to signal they want to speak.
-  - **Host Options:** Hosts receive a UI dialog to *Invite*, *Mute*, or *Kick* users instantly.
-- **Cross-Platform Readiness:** Tested on iOS physical devices using Developer Provisioning Profiles.
+# Slide 5: ฟีเจอร์ชูโรง 2 - ความเป็นส่วนตัวในชุมชน (Privacy & Ghost Profile)
+**ปัญหา:** ผู้ใช้งานกลัวถูกคนรอบตัว (เจ้านาย/เพื่อน) มาจับได้ว่าเข้าคลินิกจิตเวช
+**การทำงาน (Logic):**
+- **Preset-Only Policy:** ผู้ใช้งานทั่วไป **ไม่สามารถ** อัพโหลดรูปโปรไฟล์เองได้ เพื่อป้องกันลามกอนาจาร ระบบจะมีคลัง Asset "อวตาร (Ghost)" น่ารักๆ ให้เลือกเท่านั้น และสุ่มชื่อให้ (Random Name)
+- **Anonymous Subscription (ตามติดแบบไม่เปิดเผยตัวตน):** กดปุ่ม Follow หมอที่ชอบได้ โดยที่ตัวหมอจะเห็นแค่ตัวเลขยอดผู้ติดตาม (Blind List) รักษาความเป็นส่วนตัว 100% ไม่รู้ว่าใครตามบ้าง
+- แจ้งเตือนเวลาหมอมาเปิดห้องจะเด้งแค่ฝ่ายคนตาม (One-way Notification)
 
 ---
 
-# Slide 6: Demonstration (Screenshots / Video)
-*(Placeholder: Insert screenshots of the App here!)*
-- Show the Dashboard / Room List.
-- Show the Live Room Screen (showing a Host and Listener).
-- Show the "Manage Speaker" dialog (Mute/Kick).
+# Slide 6: ฟีเจอร์ชูโรง 3 - ระบบผู้ดูแล และคะแนนความน่าเชื่อถือ (Trust Score & Mod)
+**ปัญหา:** คนแกล้งเอาบัญชีผีมาป่วนห้องเสียง ปิดไมค์หนี ส่งเสียงดัง
+**การทำงาน (Logic):**
+- **User Trust Score:** ผู้เล่นมีคะแนนกรรม (Karma) ถ้ารีพอร์ตมั่วๆ จะโดนหักคะแนน แต่ถ้ารีพอร์ตคนทำผิดจริงจะได้บวกคะแนน
+- **Auto-Ban Threshold:** ถ้ายอดโหวตเห็นด้วยว่าคนนี้ป่วนทะลุเป้า ระบบจะ "เตะ (Kick/Mute)" อัตโนมัติ ไม่ต้องรอ Admin มาอ่านคำร้อง
+- **Community Moderator:** เลื่อนขั้นผู้ใช้น้ำดี (คะแนน Trust > 180, ดูทรงใช้งานมานาน 50 ชม.+) ให้กลายเป็น "ผู้คุมกฎอาสาสมัคร" ในชุมชน มีตราอาร์มพิเศษ และมีปุ่มเตะคนออกจากห้องแทนแอดมินกลางได้เลย (มีระบบ Audit หลังบ้านเผื่อ Mod ใช้อำนาจผิด)
 
 ---
 
-# Slide 7: Next Steps & Final Goals
-**What's remaining for the Final Submission?**
-- **Telemedicine Booking System:** UI and API for scheduling doctors/professionals.
-- **Monetization & Wallet:** In-app virtual currency for tipping and booking fees.
-- **Push Notifications:** Firebase (FCM) alerts when a room starts or an appointment is upcoming.
+# Slide 7: หมวดมาตรฐานวิชาชีพ และ แพทย์ (Doctor Interface)
+เพื่อให้ต่างจากแอปคลับเฮาส์ทั่วไป ฝั่งผู้ให้คำปรึกษาจะมีระบบหลังบ้านของตนเอง:
+- **Verified Professionals:** ก่อนหมอจะได้ Badge เครื่องหมายถูกสีทอง และเปิดห้องทางการ (Medical Room) ต้องส่ง "ใบประกอบวิชาชีพเวชกรรม" ให้ Backend ตรวจสอบก่อน
+- **Host Control Dashboard:** เมื่อหมอตั้งห้องเสียง จะมีสิทธิขาด:
+  - ดึงคนดูที่ "ยกมือ" ให้ขึ้นมาพูดหน้าไมค์ (Invite)
+  - สั่งปิดไมค์คนแทรก (Mute Participant)
+  - เตะผู้ฟังหัวรุนแรงออกจากเซสชันรักษา (Kick)
+- **Shift System (การเข้าเวร):** แอปมีปุ่ม Check-in เข้าเวร หากอยู่ในช่วง Standby หมอมีสิทธิ์รับสาย SOS ได้ค่าตอบแทนโบนัสพิเศษ
 
 ---
 
-# Slide 8: Q&A
-**Thank You!**
-Are there any questions about our implementation or architecture?
+# Slide 8: โมเดลธุรกิจและการตลาด (Business & Monetization)
+แอปพลิเคชันสามารถดำเนินงานเลี้ยงตัวเองได้ (Self-Sustaining) ผ่าน 3 โมเดลรายได้:
+1. **Pay-Per-Minute (โมเดลเติมเงินรายครั้ง):**
+   - ผู้ใช้งานเติมเงินเข้า In-App Wallet ซื้อ **"Viva Coins"**
+   - ระบบจะหักเงินแบบจับเวลานาที (Cron-job ตัดเหรียญเบื้องหลัง) เมื่ออยู่ในห้องรักษาตัวต่อตัว
+2. **Subscription (ระบบสมาชิกรายเดือน):**
+   - แพ็กเกจ "Viva Care" จ่ายรายเดือน แลกสิทธิ์เข้าห้อง Exclusive Content หรือช่องลัดคิว
+3. **B2B & CSR Partnership:**
+   - ดีลลิ่งกับมหาวิทยาลัย (Student Free Access) รูดงบมหาลัย ให้นักศึกษาใช้รหัสนักศึกษาล็อกอินปรึกษาหาทางออกได้ฟรี
+
+---
+
+# Slide 9: การคุ้มครองข้อมูลส่วนบุคคล (PDPA Compliance)
+**โครงค้ำจุนที่สำคัญที่สุดสำหรับแอปสายสุขภาพ (Health-Tech):**
+- **Data Minimization:** เราเก็บแค่ "Email" ไม่บังคับกรอก "ชื่อ-นามสกุลจริง" ตอนสมัครคนไข้ ข้อมูล Health record ถูกปิดทึบเป็นความลับ
+- **Right to Erasure (สิทธิ์ในการถูกลืม):** ผู้ใช้งานมีปุ่ม Deactivate / Delete Account ที่สามารถกวาดลบ Logs ออกจากฐานข้อมูลเราหมดได้
+- **No Sound Recording Policy:** ห้องสนทนา Telemedicine ระหว่างหมอกับคนไข้ จะ **ไม่มีการบันทึกเสียงลงเซิร์ฟเวอร์เด็ดขาด** (No recording in LiveKit Transit) เพื่อเคารพความลับวิชาชีพ
+- **Data Consent:** ก่อนเริ่มใช้งาน มีระบบให้กดยินยอม ย้ำชัดเจนว่าเราเก็บ Log การโทรแค่ "เวลาเข้า/ออก" (Duration) เพื่อเอาไปหักเหรียญ Viva Coins เท่านั้น ไม่มีการเก็บเนื้อหาเสียง
+
+---
+
+# Slide 10: สถาปัตยกรรมระดับซอฟต์แวร์ (Decoupled Architecture)
+ทีมใช้วิธีแยกการพัฒนา **หน้าบ้าน** (Frontend) และ **หลังบ้าน** (Backend) ขาดออกจากกัน (Microservices Concept):
+- **Frontend (Mobile):** **Flutter (Dart)** รันพร้อมกัน 2 แพลตฟอร์ม Android & iOS จัดการ State รันเร็วๆ ด้วย BLoC Pattern และยิง API ผ่าน Dio Library
+- **Backend & API:** **Django + Django REST Framework (DRF)** เป็นผู้รวบรวม Business Logic และตรรกะทั้งหมด
+- **Database:** **PostgreSQL** วางโครงสร้าง Schema ที่เชื่อมแบบ Relational กัน
+- **Audio Signaling Cloud (ทีเด็ด):** **LiveKit (WebRTC)** หน้าที่ของมันคือการจัดการ "ท่อเสียงสด (Low-Latency Stream)" ซึ่งมือถือจะคุยกับ Server เสียงโดยตรงด้วย Websocket ทำให้แอปเราไม่กินแบนด์วิธของเซิร์ฟเวอร์หลัก (Django) 
+
+---
+
+# Slide 11: ความปลอดภัยของระบบ (Military-Grade Security)
+เราดีไซน์ชั้นความปลอดภัย (Security Layers) 4 ระดับ:
+1. **At-Rest (หลบอยู่ในฐานข้อมูล):** รหัสผ่าน User ปลอดภัยล้านเปอร์เซ็นต์ด้วยอัลกอริทึมเข้ารหัสทางเดียว **PBKDF2 (HMAC-SHA256)** 
+2. **In-Memory (ตอนยืนยันตัวตน):** แจกเบี้ยแบบ **Stateless JWT (JSON Web Token)** หากโทรศัพท์หาย Token จะหมดอายุอัตโนมัติ ไม่ต้องกลัวแฮกเกอร์ใช้เซสชันยาว
+3. **In-Transit (ตอนส่งผ่านอากาศ):** การเชื่อมต่อ API ถูกหุ้มด้วย **HTTPS (SSL/TLS 1.2+)** และเสียงคุยแชทเข้ารหัสด้วยโปรโตคอลการทหาร **SRTP** กันใครมาดักฟัง
+4. **Hardware Storage:** Token ในเครื่องมือถือ ถูกฝังเซฟตี้ผ่าน **Apple Keychain (iOS)** และ **Android Keystore**
+
+---
+
+# Slide 12: ความคืบหน้า (Midterm Progress) - Backend API
+**ปัจจุบัน Backend ทำงานสมบูรณ์พร้อมยิงเข้าโปรดักชันแล้ว (Tested on Railway.app):**
+- **API Authentication:** สร้างระบบสมัคร ล็อกอิน คืนค่าคลาส Roles ให้ User ทราบว่าใครเป็น Patient ใครเป็น Doctor เสร็จแล้ว 100%
+- **LiveKit Twirp Integration:** 
+  - Django สามารถใช้ Secret Key ออกตั๋ว **"LiveKit Access Token"** โยนใส่มือถือสำเร็จ เพื่อให้เข้าห้อง WebRTC
+- **Moderation APIs (ส่วนที่ยากที่สุด):**
+  - เขียน API `/mute-participant/` สั่งรหัสลงไปหรี่ไมค์คนในห้องจากฝั่งหลังบ้าน
+  - เขียน API `/kick-participant/` สั่งตัดท่อ Disconnect คนป่วนออกจากไลฟ์สดเสร็จเรียบร้อย
+
+---
+
+# Slide 13: ความคืบหน้า (Midterm Progress) - Mobile Frontend
+**ฝั่งหน้าจอผู้ใช้งานในปัจจุบัน:**
+- **Room Interface:** ร่าง UI แบ่งส่วนเวที (Speakers Stage) และคนดู (Listener Audience) แยกลำดับความสำคัญ
+- **Metadata Synchronization (การซิงค์แบบไม่ต้องรีเฟรช):**
+  - ผู้ใช้งานสามารถ **"ยื่นมือ (Raise Hand)"** และ LiveKit จะใช้ฟีเจอร์ Participant Metadata Broadcast กระจายการแจ้งเตือนพุ่งสัญลักษณ์ยกมือให้โฮสต์เห็นทันทีแบบไร้ดีเลย์ (ไม่ต้องรอ Backend ช่วย)
+- **Deployment Testing:** สามารถ Build ลากลงเครื่อง **Apple iPhone** จริงเพื่อทดสอบ Permission การเข้าไมโครโฟน ระบบเสียงลำโพง และจัดการ Memory Leak (ป้องกันแอปเด้งค้าง) จนเสถียรครับ
+
+---
+
+# Slide 14: โครงสร้างฐานข้อมูล (Database Schema Snippet)
+ตัวอย่างระบบตารางที่เราวางโครงข่ายเอาไว้:
+- **`User` Table:** Custom User Model ไว้เก็บแค่อีเมลกับพาสเวิร์ดแฮช
+- **`GhostProfile` Table:** ส่วนหน้ากากเก็บรูปอวตาร, Display Name, Bio, และ Roles (หมอ/แอดมิน)
+- **`Room` Table:** ควบคุมวงจรชีวิต (Lifecycle) ของห้องเสียง เก็บรหัสคนเปิด (Host), เวลาเปิดเปิด, และทำลายข้อมูลทิ้งเมื่อหมดสถานะ Active
+
+---
+
+# Slide 15: ผลลัพธ์การทดสอบประสิทธิภาพอัตโนมัติ (Automated QA Coverage)
+การใช้แอปพลิเคชันสายแพทย์ **ระบบล่มไม่ได้เด็ดขาด** เราจึงทำ Automated Code Tests อย่างเข้มข้น:
+1. **Load Test (Django):** รันสคริปต์สาด Request เข้าใส่ Server สั่งจำลองสร้างหมอตั้งห้องถี่ๆ พร้อมกัน พบว่าได้ค่า Code 200 (Success) ตอบกลับมา ไม่เกิดอาการ Deadlock แย่งกันเขียนฐานข้อมูล
+2. **WebRTC Matrix Test:** เราทำการ **สร้าง Bot หุ่นกระบอก 2 ตัวด้วยภาษา Python** เขียนให้มันจำลองล็อกอินเข้าห้อง (โฮสต์ 1 ฟัง 1) เพื่อทดสอบ:
+   - ทดสอบสั่งโมดูลเตะผู้ฟังออก (Kick Test)
+   - ทดสอบสั่งยกมือ (Hand raise broadcast rate)
+   - **ผลลัพธ์: Coverage Test ผ่าน 100%** ท่อ Websocket ทำงานตัด-ต่อคำสั่ง Host ได้ลื่นไหล
+
+---
+
+# Slide 16: Live Demonstration (แสดงผลการทำงานจริง)
+*(หน้านี้เผื่อไว้สำหรับเปิดวิดีโอคลิป หรือรันแอปบน Emulator โชว์อาจารย์)*
+- โชว์กดสร้างห้อง
+- โชว์ล็อกอินเข้าอีกเครื่อง เครื่องที่ 2 กดยกมือ
+- โชว์การกดปุ่ม Mute ปิดไมค์เครื่องลูก หรือ กดปุ่ม Kick ไล่ออก
+
+---
+
+# Slide 17: แผนการพัฒนาในระยะถัดไป (Next Steps to Final)
+**ระบบเสียง (Core-Infrastructure) เสร็จหมดแล้ว งานที่เหลือคือหมวด "Business Rules":**
+1. **Telemedicine / Booking Calendar:** 
+   - เปลี่ยนจากการเปิดห้องสาธารณะทั่วไป (Public Live) 
+   - เป็นทำตาราง UI ให้จองปฏิทินคิวหมอ (`/api/bookings/slots`) สตาร์ทห้อง Private คุยสองคนแบบตั้งเวลาหมดอายุ (Expired Timer)
+2. **Monetization Engine (Wallet Module):** 
+   - ระบบจำลองเติมเหรียญ เก็บ Transaction History และหน้าจอหักเหรียญตอนโทรศัพท์
+3. **Firebase Cloud Messaging (FCM/Push Notification):** 
+   - ยิงสคริปต์ปลุกมือถือที่หน้าจอดับ (Wake up notification) เอาไว้เตือนตอนหมอคนโปรดมาเปิดห้องตามระบบ "Anonymous Subscription" 
+
+---
+
+# Slide 18: บทสรุป (Conclusion)
+**ทำไม VivaClub ถึงน่าสนใจ และไปแข่งเชิงธุรกิจต่อได้ระดับ Startup?**
+เพราะเราแก้ไข Pain point เรื่องการเข้าถึงจิตแพทย์ได้ถูกจุด ด้วยการเอาข้อดีของแอปอย่าง Clubhouse (ที่คนเข้าไม่ถึงง่าย แต่คุยโต้ตอบได้) มารวมกับข้อดีของ Telemedicine ที่ปลอดภัย ได้มาตรฐาน
+
+*ทำให้ทุกการรักษาโรคซึมเศร้า หรือความเครียด เป็นเรื่องเข้าถึงง่าย "คุยโดยไม่เห็นหน้า" และ "ไม่ต้องรู้สึกโดนตีตราจากสังคม"*
+
+---
+
+# Slide 19: ถาม-ตอบ (Q&A)
+**Thank You for Listening!**
+คุณครู/อาจารย์ มีคำถามหรือข้อสงสัยในส่วนของ:
+- สถาปัตยกรรม (System Design)
+- ชุดคำสั่ง WebRTC & LiveKit
+- การคำนวณฐานข้อมูล หรือ แผนธุรกิจ
+หรือไม่ครับ?

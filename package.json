@@ -1,0 +1,27 @@
+{
+  "name": "333",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arefandywae-lab/VivaClub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/arefandywae-lab/VivaClub/issues"
+  },
+  "homepage": "https://github.com/arefandywae-lab/VivaClub#readme",
+  "devDependencies": {
+    "@marp-team/marp-cli": "^4.2.3",
+    "@marp-team/marp-core": "^4.2.0",
+    "markdown-it-mermaid-plugin": "^0.1.0",
+    "markdown-it-plantuml": "^1.4.1"
+  }
+}
