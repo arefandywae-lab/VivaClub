@@ -4,9 +4,12 @@ import os
 import requests
 import json
 import time
-from livekit import rtc, api
+from pathlib import Path # Added for LOG_DIR
+from livekit import rtc # Removed 'api' as per instruction snippet
 
-BASE_URL = "https://vivaclub-production.up.railway.app"
+# Configuration
+BASE_URL = "https://vivaclubs.site"
+LOG_DIR = Path("./test_logs")
 
 # Helper checks
 def check(response, code=200):

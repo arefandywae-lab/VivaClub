@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
 # Configuration
-BASE_URL = "https://vivaclub-production.up.railway.app"
+BASE_URL = "https://vivaclubs.site"
 LOG_DIR = Path("./test_logs")
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 LOG_FILE = LOG_DIR / f"api_test_{TIMESTAMP}.log"
@@ -138,7 +138,9 @@ def main():
     
     # Variables to store tokens and IDs
     token1 = None
+    refresh1 = None
     token2 = None
+    refresh2 = None
     ghost1_id = None
     ghost2_id = None
     room_id = None
@@ -195,6 +197,7 @@ def main():
     )
     if success and response:
         token1 = response.get("access")
+        refresh1 = response.get("refresh")
         log(f"Token 1: {token1[:20]}..." if token1 else "Token 1: NOT FOUND")
     
     # 1.4 Login User 2
@@ -210,14 +213,29 @@ def main():
     )
     if success and response:
         token2 = response.get("access")
+        refresh2 = response.get("refresh")
         log(f"Token 2: {token2[:20]}..." if token2 else "Token 2: NOT FOUND")
+        
+    # 1.4.1 Test Token Refresh
+    if refresh1:
+        log("1.4.1 Test Token Refresh (User 1)")
+        r_success, r_resp = test_endpoint(
+            "Refresh Token",
+            "POST",
+            "/api/auth/token/refresh/",
+            data={"refresh": refresh1}
+        )
+        if r_success and r_resp:
+            log("  ✓ Token refresh successful!")
+            token1 = r_resp.get("access") # Update token1 with new access token
+
     
-    # 1.5 Get Current User
-    log("1.5 Get Current User (User 1)")
+    # 1.5 Get Current User Profile
+    log("1.5 Get Current User Profile (User 1)")
     test_endpoint(
-        "Get Current User",
+        "Get Current User Profile",
         "GET",
-        "/api/auth/me/",
+        "/api/auth/profile/",
         token=token1
     )
     
@@ -436,7 +454,7 @@ def main():
             test_endpoint(
                 "Mark Notification as Read",
                 "POST",
-                f"/api/community/notifications/{notif_id}/mark_read/",
+                f"/api/community/notifications/{notif_id}/read/",
                 token=token1
             )
     
@@ -445,7 +463,7 @@ def main():
     test_endpoint(
         "Mark All as Read",
         "POST",
-        "/api/community/notifications/mark_all_read/",
+        "/api/community/notifications/read-all/",
         token=token1
     )
     

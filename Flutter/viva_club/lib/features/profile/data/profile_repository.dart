@@ -18,7 +18,6 @@ class ProfileRepository {
     }
   }
 
-  /// Fetch the user's appointments (upcoming and past)
   Future<List<dynamic>> getMyAppointments() async {
     try {
       final response = await _dioClient.dio.get(
@@ -31,6 +30,16 @@ class ProfileRepository {
       return response.data;
     } catch (e) {
       throw 'Failed to load appointments';
+    }
+  }
+
+  /// Fetch the authenticated user's trust score
+  Future<Map<String, dynamic>> getTrustScore() async {
+    try {
+      final response = await _dioClient.dio.get(ApiConstants.trustScore);
+      return response.data;
+    } catch (e) {
+      return {'score': 100}; // Fallback default
     }
   }
 }

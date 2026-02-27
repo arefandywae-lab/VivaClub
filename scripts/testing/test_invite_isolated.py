@@ -2,7 +2,8 @@
 import requests
 import sys
 
-BASE_URL = "https://vivaclub-production.up.railway.app"
+# Target URL
+BASE_URL = "https://vivaclubs.site"
 
 def log(msg, color=""):
     print(f"{color}{msg}\033[0m")

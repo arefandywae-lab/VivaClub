@@ -96,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Column(
       children: [
-        _buildHeader(displayName, memberSince),
+        _buildHeader(displayName, memberSince, state.trustScore),
         SizedBox(height: 20.h),
         _buildTabBar(),
         Expanded(
@@ -135,7 +135,27 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  Widget _buildHeader(String displayName, String memberSince) {
+  Widget _buildHeader(
+    String displayName,
+    String memberSince,
+    Map<String, dynamic> trustScoreInfo,
+  ) {
+    final int score = trustScoreInfo['score'] ?? 100;
+
+    // Determine the color and text based on the score
+    Color scoreColor = Colors.green;
+    String statusWord = 'Good';
+    if (score < 50) {
+      scoreColor = Colors.redAccent;
+      statusWord = 'Poor';
+    } else if (score < 90) {
+      scoreColor = Colors.orange;
+      statusWord = 'Fair';
+    } else if (score >= 150) {
+      scoreColor = AppTheme.skyBlue;
+      statusWord = 'Excellent';
+    }
+
     return Container(
       padding: EdgeInsets.fromLTRB(24.w, 60.h, 24.w, 24.h),
       decoration: BoxDecoration(
@@ -265,6 +285,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           // Quick Stats
           Row(
             children: [
+              _buildStatCard(
+                'TRUST',
+                '🛡️',
+                score.toString(),
+                subtitle: statusWord,
+                valueColor: scoreColor,
+              ),
+              SizedBox(width: 12.w),
               _buildStatCard('MOOD', '🙂', 'Good'),
               SizedBox(width: 12.w),
               _buildStatCard('STREAK', '🔥', '5 Days'),
@@ -275,7 +303,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildStatCard(String label, String icon, String value) {
+  Widget _buildStatCard(
+    String label,
+    String icon,
+    String value, {
+    String? subtitle,
+    Color? valueColor,
+  }) {
     return Expanded(
       child: Container(
         padding: EdgeInsets.all(12.w),
@@ -305,14 +339,30 @@ class _ProfileScreenState extends State<ProfileScreen>
             SizedBox(height: 4.h),
             Row(
               children: [
-                Text(icon, style: TextStyle(fontSize: 16.sp)),
-                SizedBox(width: 8.w),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textDark,
+                Text(icon, style: TextStyle(fontSize: 14.sp)),
+                SizedBox(width: 4.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                          color: valueColor ?? AppTheme.textDark,
+                        ),
+                      ),
+                      if (subtitle != null)
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: valueColor ?? AppTheme.textGrey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],

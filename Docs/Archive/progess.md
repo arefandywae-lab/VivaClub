@@ -62,7 +62,14 @@
 
 ---
 
-### ❌ Missing Clubhouse Features (5/15)
+### ❌ Missing Clubhouse Features (4/15)
+
+> **Phase 3: Trust Score & Safety ✅ COMPLETE** (2026-02-27)
+> - `UserTrustScore` and `RoomReport` Django models + migrations
+> - API: `POST /api/community/reports/`, `GET /api/community/reports/`, `PATCH /api/community/reports/{id}/validate/`
+> - API: `GET /api/community/trust-score/me/`
+> - Flutter: Report Dialog in Live Room (tap listener/speaker → Report)
+> - Flutter: Trust Score badge displayed in Profile Quick Stats
 
 #### 1. Anonymous Subscription System (Priority: 🔴 **CRITICAL**)
 **Impact:** Core differentiator, drives engagement  
@@ -102,14 +109,11 @@
 **Estimated Time:** 3-5 days
 
 - [x] **Backend Endpoints** (Hand Raise, Mute, Kick) ✅
-- [ ] Emoji reactions (👏, ❤️, 😂, 🤔)
-- [ ] Text chat in room (optional)
-- [ ] Pin messages (Host only)
 - [ ] Share room link
 
 **Database:** Minimal changes  
 **APIs Needed:** Done ✅
-**Frontend:** UI components needed
+**Frontend:** Done ✅
 
 ---
 

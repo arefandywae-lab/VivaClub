@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import GhostProfile, GhostSubscription, Room, Notification
+from .models import GhostProfile, GhostSubscription, Room, Notification, UserTrustScore, RoomReport
 
 class GhostProfileSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source='user.role', read_only=True)
@@ -43,3 +43,15 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'type', 'title', 'body', 'data', 'is_read', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+class UserTrustScoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserTrustScore
+        fields = ['score', 'total_reports_received', 'valid_reports_received', 'total_reports_made', 'last_updated']
+        read_only_fields = ['score', 'total_reports_received', 'valid_reports_received', 'total_reports_made', 'last_updated']
+
+class RoomReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RoomReport
+        fields = ['id', 'reporter', 'reported_user', 'room', 'reason', 'description', 'status', 'created_at']
+        read_only_fields = ['id', 'reporter', 'status', 'created_at']

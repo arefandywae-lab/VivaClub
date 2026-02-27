@@ -1,21 +1,7 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-
 class ApiConstants {
-  // Use 10.0.2.2 for Android Emulator, localhost for iOS Simulator
+  // Point to the live VPS backend for all builds
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'https://vivaclub-production.up.railway.app';
-    }
-    if (kReleaseMode) {
-      return 'https://vivaclub-production.up.railway.app';
-    }
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000'; // Local dev for emulator
-    }
-    // For physical iOS devices in debug mode, we point to Railway
-    // because localhost doesn't work.
-    return 'https://vivaclub-production.up.railway.app';
+    return 'https://vivaclubs.site';
   }
 
   // Auth Endpoints
@@ -25,6 +11,8 @@ class ApiConstants {
 
   // Community Endpoints
   static const String rooms = '/api/community/rooms/';
+  static const String reports = '/api/community/reports/';
+  static const String trustScore = '/api/community/trust-score/me/';
   static String joinRoom(String roomId) => '/api/community/rooms/$roomId/join/';
   static String leaveRoom(String roomId) =>
       '/api/community/rooms/$roomId/leave/';

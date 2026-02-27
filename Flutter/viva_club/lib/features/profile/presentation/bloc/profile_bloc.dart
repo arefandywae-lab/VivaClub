@@ -25,11 +25,16 @@ class ProfileLoading extends ProfileState {}
 class ProfileLoaded extends ProfileState {
   final Map<String, dynamic> user;
   final List<dynamic> appointments;
+  final Map<String, dynamic> trustScore;
 
-  const ProfileLoaded({required this.user, required this.appointments});
+  const ProfileLoaded({
+    required this.user,
+    required this.appointments,
+    required this.trustScore,
+  });
 
   @override
-  List<Object> get props => [user, appointments];
+  List<Object> get props => [user, appointments, trustScore];
 
   /// Upcoming = status is 'available', 'reserved', or 'confirmed' and in the future
   List<dynamic> get upcomingAppointments => appointments
@@ -62,16 +67,23 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   Future<void> _onLoad(ProfileLoad event, Emitter<ProfileState> emit) async {
     emit(ProfileLoading());
     try {
-      // Fetch profile and appointments in parallel
       final results = await Future.wait([
         _profileRepository.getProfile(),
         _profileRepository.getMyAppointments(),
+        _profileRepository.getTrustScore(),
       ]);
 
       final user = results[0] as Map<String, dynamic>;
       final appointments = results[1] as List<dynamic>;
+      final trustScore = results[2] as Map<String, dynamic>;
 
-      emit(ProfileLoaded(user: user, appointments: appointments));
+      emit(
+        ProfileLoaded(
+          user: user,
+          appointments: appointments,
+          trustScore: trustScore,
+        ),
+      );
     } catch (e) {
       emit(ProfileFailure(e.toString()));
     }

@@ -86,3 +86,47 @@ class FCMToken(models.Model):
     
     def __str__(self):
         return f"{self.user.username}'s FCM Token"
+
+class UserTrustScore(models.Model):
+    """Tracks a user's trust level in the community to prevent abuse"""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='trust_score')
+    score = models.IntegerField(default=100) # 0-200. Drops on valid reports, rises on approved reports.
+    total_reports_received = models.IntegerField(default=0)
+    valid_reports_received = models.IntegerField(default=0)
+    total_reports_made = models.IntegerField(default=0)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - Score: {self.score}"
+
+class RoomReport(models.Model):
+    """Reports made against users in a room"""
+    REASON_CHOICES = [
+        ('harassment', 'Harassment or Bullying'),
+        ('spam', 'Spam or Promotional'),
+        ('inappropriate', 'Inappropriate Content'),
+        ('self_harm', 'Self-Harm Threats'),
+        ('other', 'Other')
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('valid', 'Valid Report'),
+        ('invalid', 'Invalid/False Report')
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_made')
+    reported_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_received')
+    room = models.ForeignKey('Room', on_delete=models.SET_NULL, null=True, related_name='reports')
+    reason = models.CharField(max_length=50, choices=REASON_CHOICES)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='reports_resolved')
+    
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report against {self.reported_user.username} by {self.reporter.username}"

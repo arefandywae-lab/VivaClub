@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/emoji_utils.dart';
 import 'package:viva_club/features/community/presentation/bloc/room_bloc.dart';
 import 'package:viva_club/features/community/data/livekit_room_service.dart';
+import 'package:viva_club/features/community/data/community_repository.dart';
 
 class LiveRoomScreen extends StatefulWidget {
   final String token;
@@ -575,6 +576,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
             },
             child: const Text('Invite to Speak'),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog first
+              _showReportDialog(context, p);
+            },
+            child: const Text('Report', style: TextStyle(color: Colors.orange)),
+          ),
         ],
       ),
     );
@@ -619,6 +627,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 _showKickConfirmation(context, p);
               },
             ),
+            ListTile(
+              leading: const Icon(
+                Icons.report_problem_outlined,
+                color: Colors.orange,
+              ),
+              title: const Text(
+                'Report User',
+                style: TextStyle(color: Colors.orange),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showReportDialog(context, p);
+              },
+            ),
           ],
         ),
         actions: [
@@ -654,6 +676,115 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showReportDialog(BuildContext context, Participant p) {
+    String selectedReason = 'harassment';
+    final repo = context.read<CommunityRepository>();
+    final roomId = context.read<LiveKitRoomService>().activeRoomId;
+    final descriptionController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Report ${p.name}'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Why are you reporting this user?'),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedReason,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'harassment',
+                          child: Text('Harassment or Bullying'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'spam',
+                          child: Text('Spam or Promotional'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'inappropriate',
+                          child: Text('Inappropriate Content'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'self_harm',
+                          child: Text('Self-Harm Threats'),
+                        ),
+                        DropdownMenuItem(value: 'other', child: Text('Other')),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          selectedReason = val!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: descriptionController,
+                      decoration: const InputDecoration(
+                        hintText: 'Additional details (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    try {
+                      await repo.submitReport(
+                        p.identity, // LiveKit identity is mapped to User ID or Ghost ID
+                        roomId,
+                        selectedReason,
+                        descriptionController.text,
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Report submitted successfully. Thank you.',
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Failed to submit report. Please try again.',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text(
+                    'Submit Report',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

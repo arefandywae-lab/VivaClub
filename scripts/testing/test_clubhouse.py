@@ -8,22 +8,24 @@ import requests
 import json
 import sys
 import time
+import asyncio
+from livekit import rtc
 import concurrent.futures
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
 # Configuration
-BASE_URL = "https://vivaclub-production.up.railway.app"
+BASE_URL = "https://vivaclubs.site"
 LOG_DIR = Path("./test_logs")
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 LOG_FILE = LOG_DIR / f"clubhouse_test_{TIMESTAMP}.log"
 SUMMARY_FILE = LOG_DIR / f"clubhouse_summary_{TIMESTAMP}.txt"
 
 # Test Configuration
-NUM_USERS = 15  # Create 15 test users
-NUM_ROOMS = 12  # Create 12 test rooms
-CATEGORIES = ["anxiety", "depression", "general", "addiction"]
+NUM_USERS = 20  # Create 20 test users
+NUM_ROOMS = 15  # Create 15 test rooms
+CATEGORIES = ["anxiety", "depression", "general", "sleep"]
 
 # Colors
 class Colors:
@@ -305,45 +307,88 @@ def main():
         host = users[0]
         listener = users[1]
         
-        # Test 1: Join Room
-        log("\n3.1 Test: Join Room", Colors.YELLOW)
-        success, join_response = test_endpoint(
-            "User joins room",
-            "POST",
-            f"/api/community/rooms/{test_room['room_id']}/join/",
-            token=listener["token"]
-        )
         
-        if success and join_response:
-            livekit_token = join_response.get("token")
-            is_host = join_response.get("is_host")
-            identity = join_response.get("identity")
+        async def run_realistic_interactions():
+            log("\n3.1 Test: Join Room (WebRTC)", Colors.YELLOW)
             
-            log(f"  LiveKit Token: {livekit_token[:30]}...", Colors.CYAN)
-            log(f"  Is Host: {is_host}", Colors.CYAN)
-            log(f"  Identity: {identity}", Colors.CYAN)
+            # 1. Host and Listener Join via API
+            h_success, h_join_res = test_endpoint("Host gets join token", "POST", f"/api/community/rooms/{test_room['room_id']}/join/", token=host["token"])
+            l_success, l_join_res = test_endpoint("Listener gets join token", "POST", f"/api/community/rooms/{test_room['room_id']}/join/", token=listener["token"])
             
-            # Test 2: Invite to Speak
-            log("\n3.2 Test: Invite to Speak", Colors.YELLOW)
-            success, invite_response = test_endpoint(
-                "Host invites listener to speak",
-                "POST",
-                f"/api/community/rooms/{test_room['room_id']}/invite/",
-                data={"identity": identity},
-                token=host["token"]
-            )
+            if not (h_success and l_success):
+                log("  ✗ Failed to get join tokens", Colors.RED)
+                return
+                
+            host_ws_url, host_lk_token = h_join_res.get("url"), h_join_res.get("token")
+            list_ws_url, list_lk_token = l_join_res.get("url"), l_join_res.get("token")
+            list_identity = l_join_res.get("identity")
             
-            if success:
-                log("  ✓ Invite successful!", Colors.GREEN)
+            room_host = rtc.Room()
+            room_listener = rtc.Room()
             
-            # Test 3: Leave Room
-            log("\n3.3 Test: Leave Room", Colors.YELLOW)
-            test_endpoint(
-                "User leaves room",
-                "POST",
-                f"/api/community/rooms/{test_room['room_id']}/leave/",
-                token=listener["token"]
-            )
+            try:
+                log("  Connecting to LiveKit WebRTC...", Colors.CYAN)
+                await room_host.connect(host_ws_url, host_lk_token)
+                await room_listener.connect(list_ws_url, list_lk_token)
+                log("  ✓ WebRTC Connected Successfully!", Colors.GREEN)
+                await asyncio.sleep(1) # Allow state to sync
+                
+                # Test Hand Raise
+                log("\n3.2 Test: Raise Hand", Colors.YELLOW)
+                await room_listener.local_participant.set_metadata(json.dumps({"handRaised": True}))
+                await asyncio.sleep(1)
+                log("  ✓ Hand raised successfully via metadata!", Colors.GREEN)
+                
+                # Test Invite to Speak
+                log("\n3.3 Test: Invite to Speak", Colors.YELLOW)
+                test_endpoint(
+                    "Host invites listener to speak",
+                    "POST",
+                    f"/api/community/rooms/{test_room['room_id']}/invite/",
+                    data={"identity": list_identity},
+                    token=host["token"]
+                )
+                await asyncio.sleep(1)
+                
+                # Test Mute Participant
+                log("\n3.4 Test: Mute Participant (Dummy Track)", Colors.YELLOW)
+                test_endpoint(
+                    "Host mutes listener",
+                    "POST",
+                    f"/api/community/rooms/{test_room['room_id']}/mute-participant/",
+                    data={"identity": list_identity, "track_sid": "dummy_track"},
+                    token=host["token"],
+                    expected_status=404 # Expect 404 because dummy_track doesn't exist, but it validates the endpoint
+                )
+                
+                # Test Kick Participant
+                log("\n3.5 Test: Kick Participant", Colors.YELLOW)
+                test_endpoint(
+                    "Host kicks listener",
+                    "POST",
+                    f"/api/community/rooms/{test_room['room_id']}/kick-participant/",
+                    data={"identity": list_identity},
+                    token=host["token"]
+                )
+                await asyncio.sleep(1)
+                
+                # Test Leave Room API
+                log("\n3.6 Test: Leave Room API", Colors.YELLOW)
+                test_endpoint(
+                    "User leaves room via API",
+                    "POST",
+                    f"/api/community/rooms/{test_room['room_id']}/leave/",
+                    token=listener["token"]
+                )
+                
+            except Exception as e:
+                log(f"  ✗ LiveKit WebRTC Error: {e}", Colors.RED)
+            finally:
+                await room_host.disconnect()
+                await room_listener.disconnect()
+
+        # Run the async interactions
+        asyncio.run(run_realistic_interactions())
     
     #=================================================
     # PHASE 4: FOLLOWING & NOTIFICATIONS

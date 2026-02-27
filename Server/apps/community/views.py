@@ -2,12 +2,14 @@ from rest_framework import viewsets, permissions, decorators, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from .models import GhostProfile, GhostSubscription, Room, Notification, FCMToken
+from .models import GhostProfile, GhostSubscription, Room, Notification, FCMToken, UserTrustScore, RoomReport
 from .serializers import (
     GhostProfileSerializer, 
     GhostSubscriptionSerializer, 
     RoomSerializer,
-    NotificationSerializer
+    NotificationSerializer,
+    UserTrustScoreSerializer,
+    RoomReportSerializer
 )
 from apps.utils.ghost_names import generate_ghost_name
 from .services import NotificationService
@@ -537,3 +539,72 @@ class FCMTokenView(APIView):
             'success': True,
             'message': 'FCM token registered' if created else 'FCM token updated'
         })
+
+
+class UserTrustScoreView(APIView):
+    """View to get current user's trust score"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        score, _ = UserTrustScore.objects.get_or_create(user=request.user)
+        serializer = UserTrustScoreSerializer(score)
+        return Response(serializer.data)
+
+
+class RoomReportViewSet(viewsets.ModelViewSet):
+    """ViewSet for submitting and managing reports"""
+    queryset = RoomReport.objects.all()
+    serializer_class = RoomReportSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Admins see all. Users see only their own reports they made.
+        if self.request.user.is_staff:
+            return RoomReport.objects.all()
+        return RoomReport.objects.filter(reporter=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        data['reporter'] = request.user.id
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        reporter_score, _ = UserTrustScore.objects.get_or_create(user=request.user)
+        reporter_score.total_reports_made += 1
+        reporter_score.save()
+        
+        reported_score, _ = UserTrustScore.objects.get_or_create(user=serializer.validated_data['reported_user'])
+        reported_score.total_reports_received += 1
+        reported_score.save()
+        
+        return Response(serializer.data, status=201)
+
+    @decorators.action(detail=True, methods=['patch'], permission_classes=[permissions.IsAdminUser])
+    def validate(self, request, pk=None):
+        """Admin action to validate a report"""
+        from django.utils import timezone
+        report = self.get_object()
+        new_status = request.data.get('status')
+        if new_status not in dict(RoomReport.STATUS_CHOICES):
+            return Response({'error': 'Invalid status'}, status=400)
+            
+        report.status = new_status
+        report.resolved_by = request.user
+        report.resolved_at = timezone.now()
+        report.save()
+        
+        # Process trust score penalty
+        if new_status == 'valid':
+            reported_score, _ = UserTrustScore.objects.get_or_create(user=report.reported_user)
+            reported_score.score = max(0, reported_score.score - 20)
+            reported_score.valid_reports_received += 1
+            reported_score.save()
+            
+            # Reward reporter
+            reporter_score, _ = UserTrustScore.objects.get_or_create(user=report.reporter)
+            reporter_score.score = min(200, reporter_score.score + 2)
+            reporter_score.save()
+            
+        return Response(self.get_serializer(report).data)

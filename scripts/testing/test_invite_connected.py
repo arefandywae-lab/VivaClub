@@ -4,7 +4,8 @@ import os
 import requests
 from livekit import rtc
 
-BASE_URL = "https://vivaclub-production.up.railway.app"
+# Set this to your local or prod URL
+BASE_URL = "https://vivaclubs.site"
 
 # Helper checks
 def check(response, code=200):

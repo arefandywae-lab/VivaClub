@@ -55,6 +55,7 @@ class CommunityRepository {
     } catch (e) {
       if (e.runtimeType.toString() == 'DioException') {
         final res = (e as dynamic).response;
+        // ignore: avoid_print
         print('Invite Error: ${res?.statusCode} - ${res?.data}');
       }
       throw 'Failed to invite speaker: $e';
@@ -85,6 +86,37 @@ class CommunityRepository {
       );
     } catch (e) {
       throw 'Failed to kick participant: $e';
+    }
+  }
+
+  Future<void> submitReport(
+    String reportedUserId,
+    String? roomId,
+    String reason,
+    String description,
+  ) async {
+    try {
+      final data = {
+        'reported_user': reportedUserId,
+        'reason': reason,
+        'description': description,
+      };
+      if (roomId != null) {
+        data['room'] = roomId;
+      }
+
+      await _dioClient.dio.post(ApiConstants.reports, data: data);
+    } catch (e) {
+      throw 'Failed to submit report: $e';
+    }
+  }
+
+  Future<Map<String, dynamic>> getTrustScore() async {
+    try {
+      final response = await _dioClient.dio.get(ApiConstants.trustScore);
+      return response.data;
+    } catch (e) {
+      throw 'Failed to get trust score';
     }
   }
 }
