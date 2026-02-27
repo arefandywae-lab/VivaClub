@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/emoji_utils.dart';
 import 'package:viva_club/features/community/presentation/bloc/room_bloc.dart';
@@ -30,7 +31,15 @@ class LiveRoomScreen extends StatefulWidget {
 }
 
 class _LiveRoomScreenState extends State<LiveRoomScreen> {
-  bool _isLeaving = false; // Guard against multiple leaves
+  bool _isLeaving = false;
+
+  void _shareRoomLink() {
+    final deepLink = 'https://vivaclub.app/rooms/${widget.roomId}';
+    Share.share(
+      '💬 Join me in "${widget.title}" on VivaClub — a safe space to talk! $deepLink',
+      subject: 'Join my VivaClub room',
+    );
+  }
 
   void _leaveRoom() async {
     if (_isLeaving) return;
@@ -211,18 +220,30 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
             ),
           ),
           GestureDetector(
+            onTap: _shareRoomLink,
+            child: Container(
+              padding: EdgeInsets.all(8.w),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFEEF2FF),
+              ),
+              child: Icon(
+                Icons.share_rounded,
+                size: 20.sp,
+                color: AppTheme.primary,
+              ),
+            ),
+          ),
+          SizedBox(width: 8.w),
+          GestureDetector(
             onTap: _leaveRoom,
             child: Container(
               padding: EdgeInsets.all(8.w),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFFEF2F2),
+                color: Color(0xFFFEF2F2),
               ),
-              child: Icon(
-                Icons.logout,
-                size: 20.sp,
-                color: const Color(0xFFEF4444),
-              ),
+              child: Icon(Icons.logout, size: 20.sp, color: Color(0xFFEF4444)),
             ),
           ),
         ],
@@ -699,7 +720,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                     const Text('Why are you reporting this user?'),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: selectedReason,
+                      initialValue: selectedReason,
                       isExpanded: true,
                       items: const [
                         DropdownMenuItem(

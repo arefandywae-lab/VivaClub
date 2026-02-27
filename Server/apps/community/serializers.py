@@ -1,12 +1,12 @@
 from rest_framework import serializers
-from .models import GhostProfile, GhostSubscription, Room, Notification, UserTrustScore, RoomReport
+from .models import GhostProfile, GhostSubscription, Room, Notification, UserTrustScore, RoomReport, BlockedUser
 
 class GhostProfileSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source='user.role', read_only=True)
 
     class Meta:
         model = GhostProfile
-        fields = ['id', 'display_name', 'avatar_url', 'followers_count', 'is_active', 'role']
+        fields = ['id', 'display_name', 'avatar_url', 'bio', 'followers_count', 'is_active', 'role']
         read_only_fields = ['id', 'followers_count', 'role']
 
     def validate_display_name(self, value):
@@ -55,3 +55,9 @@ class RoomReportSerializer(serializers.ModelSerializer):
         model = RoomReport
         fields = ['id', 'reporter', 'reported_user', 'room', 'reason', 'description', 'status', 'created_at']
         read_only_fields = ['id', 'reporter', 'status', 'created_at']
+
+class BlockedUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BlockedUser
+        fields = ['id', 'blocked', 'created_at']
+        read_only_fields = ['id', 'blocker', 'created_at']

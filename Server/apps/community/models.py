@@ -7,6 +7,7 @@ class GhostProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ghost_profile')
     display_name = models.CharField(max_length=255)
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
+    bio = models.TextField(blank=True, default='')  # About me / bio
     followers_count = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     
@@ -130,3 +131,18 @@ class RoomReport(models.Model):
 
     def __str__(self):
         return f"Report against {self.reported_user.username} by {self.reporter.username}"
+
+class BlockedUser(models.Model):
+    """Allows a ghost profile to block another ghost profile"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    blocker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blocks_made')
+    blocked = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blocked_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['blocker', 'blocked'], name='unique_block')
+        ]
+    
+    def __str__(self):
+        return f"{self.blocker.username} blocked {self.blocked.username}"

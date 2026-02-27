@@ -9,7 +9,13 @@ abstract class RoomEvent extends Equatable {
   List<Object> get props => [];
 }
 
-class RoomLoad extends RoomEvent {}
+class RoomLoad extends RoomEvent {
+  final String? search;
+  final String sort;
+  const RoomLoad({this.search, this.sort = 'recent'});
+  @override
+  List<Object> get props => [search ?? '', sort];
+}
 
 class RoomCreate extends RoomEvent {
   final String title;
@@ -78,7 +84,10 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   Future<void> _onLoad(RoomLoad event, Emitter<RoomState> emit) async {
     emit(RoomLoading());
     try {
-      final rooms = await _communityRepository.getRooms();
+      final rooms = await _communityRepository.getRooms(
+        search: event.search,
+        sort: event.sort,
+      );
       emit(RoomLoaded(rooms));
     } catch (e) {
       emit(RoomFailure(e.toString()));

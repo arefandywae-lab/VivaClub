@@ -2,18 +2,21 @@ from rest_framework import viewsets, permissions, decorators, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from .models import GhostProfile, GhostSubscription, Room, Notification, FCMToken, UserTrustScore, RoomReport
+from .models import GhostProfile, GhostSubscription, Room, Notification, FCMToken, UserTrustScore, RoomReport, BlockedUser
 from .serializers import (
     GhostProfileSerializer, 
     GhostSubscriptionSerializer, 
     RoomSerializer,
     NotificationSerializer,
     UserTrustScoreSerializer,
-    RoomReportSerializer
+    RoomReportSerializer,
+    BlockedUserSerializer
 )
 from apps.utils.ghost_names import generate_ghost_name
 from .services import NotificationService
 import uuid
+
+BANNED_WORDS = ['fuck', 'shit', 'bitch', 'asshole', 'cunt', 'nigger', 'faggot', 'retard'] # baselist
 
 # ... GhostProfileViewSet ...
 class GhostProfileViewSet(viewsets.ModelViewSet):
@@ -112,9 +115,9 @@ class RoomViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # 1. Proactive cleanup: deactivate empty rooms older than 1 minute
         from django.utils import timezone
         from datetime import timedelta
+        from django.db.models import Q
         one_minute_ago = timezone.now() - timedelta(minutes=1)
         
         Room.objects.filter(
@@ -123,22 +126,46 @@ class RoomViewSet(viewsets.ModelViewSet):
             last_active_at__lte=one_minute_ago
         ).update(is_active=False)
         
-        # 2. Return active rooms
-        return Room.objects.filter(is_active=True).order_by('-created_at')
+        qs = Room.objects.filter(is_active=True)
+        
+        # --- Search by title or tags ---
+        search = self.request.query_params.get('search')
+        if search:
+            qs = qs.filter(Q(title__icontains=search) | Q(description__icontains=search))
+        
+        # --- Filter by category ---
+        category = self.request.query_params.get('category')
+        if category and category != 'general':
+            qs = qs.filter(category=category)
+        
+        # --- Sorting ---
+        sort = self.request.query_params.get('sort', 'recent')
+        if sort == 'trending':
+            qs = qs.order_by('-listeners_count', '-created_at')
+        elif sort == 'scheduled':
+            qs = qs.filter(is_scheduled=True).order_by('scheduled_at')
+        else:
+            qs = qs.order_by('-created_at')
+        
+        return qs
 
     def perform_create(self, serializer):
-        # Auto-assign host from request.user's GhostProfile
+        from rest_framework.exceptions import ValidationError
         host_profile, _ = GhostProfile.objects.get_or_create(
             user=self.request.user,
             defaults={'display_name': generate_ghost_name()}
         )
         
-        # Unique Title Logic
         title = serializer.validated_data.get('title', 'Untitled Room')
+        title_lower = title.lower()
+        
+        # Profanity check
+        if any(word in title_lower for word in BANNED_WORDS):
+            raise ValidationError({'title': 'Room title contains inappropriate language.'})
+        
         original_title = title
         counter = 1
         
-        # Check if active room with this title exists
         while Room.objects.filter(title=title, is_active=True).exists():
             title = f"{original_title}#{counter}"
             counter += 1
@@ -608,3 +635,37 @@ class RoomReportViewSet(viewsets.ModelViewSet):
             reporter_score.save()
             
         return Response(self.get_serializer(report).data)
+
+
+class BlockUserViewSet(viewsets.GenericViewSet):
+    """Block/Unblock users and list blocked users"""
+    serializer_class = BlockedUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request):
+        """GET /api/community/blocks/ - List all blocked users"""
+        blocks = BlockedUser.objects.filter(blocker=request.user)
+        serializer = self.get_serializer(blocks, many=True)
+        return Response(serializer.data)
+
+    def create(self, request):
+        """POST /api/community/blocks/ - Block a user"""
+        blocked_user_id = request.data.get('blocked')
+        if not blocked_user_id:
+            return Response({'error': 'blocked user id required'}, status=400)
+        if str(blocked_user_id) == str(request.user.id):
+            return Response({'error': 'Cannot block yourself'}, status=400)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        blocked_user = get_object_or_404(User, id=blocked_user_id)
+        block, created = BlockedUser.objects.get_or_create(
+            blocker=request.user, blocked=blocked_user
+        )
+        serializer = self.get_serializer(block)
+        return Response(serializer.data, status=201 if created else 200)
+
+    @decorators.action(detail=True, methods=['delete'])
+    def unblock(self, request, pk=None):
+        """DELETE /api/community/blocks/{id}/unblock/ - Unblock a user"""
+        BlockedUser.objects.filter(blocker=request.user, blocked_id=pk).delete()
+        return Response({'message': 'User unblocked'})

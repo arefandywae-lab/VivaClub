@@ -20,8 +20,10 @@ class RoomListScreen extends StatefulWidget {
 class _RoomListScreenState extends State<RoomListScreen>
     with SingleTickerProviderStateMixin {
   String? _selectedCategory;
-  bool _isJoining = false; // Prevent double-tap
+  bool _isJoining = false;
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  String _sortMode = 'recent'; // 'recent' | 'trending' | 'scheduled'
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -78,6 +80,7 @@ class _RoomListScreenState extends State<RoomListScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -136,8 +139,15 @@ class _RoomListScreenState extends State<RoomListScreen>
                     if (_selectedCategory == null) {
                       return _buildCategoryGrid();
                     } else {
-                      return _buildRoomListWithTabs(
-                        List<Map<String, dynamic>>.from(state.rooms),
+                      return Column(
+                        children: [
+                          _buildSearchAndSortBar(),
+                          Expanded(
+                            child: _buildRoomListWithTabs(
+                              List<Map<String, dynamic>>.from(state.rooms),
+                            ),
+                          ),
+                        ],
                       );
                     }
                   }
@@ -245,6 +255,96 @@ class _RoomListScreenState extends State<RoomListScreen>
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchAndSortBar() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 4.h),
+      child: Column(
+        children: [
+          TextField(
+            controller: _searchController,
+            onSubmitted: (val) {
+              context.read<RoomBloc>().add(
+                RoomLoad(search: val.trim(), sort: _sortMode),
+              );
+            },
+            decoration: InputDecoration(
+              hintText: 'Search rooms...',
+              hintStyle: TextStyle(color: AppTheme.textGrey, fontSize: 14.sp),
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                        context.read<RoomBloc>().add(RoomLoad(sort: _sortMode));
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: EdgeInsets.symmetric(
+                vertical: 0,
+                horizontal: 16.w,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16.r),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Row(
+            children: ['recent', 'trending', 'scheduled'].map((mode) {
+              final isSelected = _sortMode == mode;
+              return Padding(
+                padding: EdgeInsets.only(right: 8.w),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _sortMode = mode);
+                    context.read<RoomBloc>().add(
+                      RoomLoad(
+                        search: _searchController.text.trim(),
+                        sort: mode,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 6.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.primary : Colors.white,
+                      borderRadius: BorderRadius.circular(20.r),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppTheme.primary
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                    child: Text(
+                      mode == 'recent'
+                          ? '🕐 Recent'
+                          : mode == 'trending'
+                          ? '🔥 Trending'
+                          : '📅 Scheduled',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : AppTheme.textDark,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),

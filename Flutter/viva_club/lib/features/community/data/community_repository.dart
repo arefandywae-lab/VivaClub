@@ -4,9 +4,19 @@ import '../../../../core/constants/api_constants.dart';
 class CommunityRepository {
   final DioClient _dioClient = DioClient();
 
-  Future<List<dynamic>> getRooms() async {
+  Future<List<dynamic>> getRooms({
+    String? search,
+    String sort = 'recent',
+  }) async {
     try {
-      final response = await _dioClient.dio.get(ApiConstants.rooms);
+      final Map<String, dynamic> params = {'sort': sort};
+      if (search != null && search.isNotEmpty) {
+        params['search'] = search;
+      }
+      final response = await _dioClient.dio.get(
+        ApiConstants.rooms,
+        queryParameters: params,
+      );
       // If pagination is used, response.data['results']
       if (response.data is Map && response.data.containsKey('results')) {
         return response.data['results'];

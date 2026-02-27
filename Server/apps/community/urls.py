@@ -7,7 +7,8 @@ from .views import (
     NotificationViewSet,
     FCMTokenView,
     RoomReportViewSet,
-    UserTrustScoreView
+    UserTrustScoreView,
+    BlockUserViewSet
 )
 
 router = DefaultRouter()
@@ -16,6 +17,7 @@ router.register(r'following', GhostSubscriptionViewSet, basename='following')
 router.register(r'rooms', RoomViewSet, basename='rooms')
 router.register(r'notifications', NotificationViewSet, basename='notifications')
 router.register(r'reports', RoomReportViewSet, basename='reports')
+router.register(r'blocks', BlockUserViewSet, basename='blocks')
 
 urlpatterns = [
     path('', include(router.urls)),

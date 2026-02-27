@@ -47,6 +47,9 @@ dependencies:
   # Navigation
   go_router: ^12.1.0
 
+  # Sharing
+  share_plus: ^10.1.4
+
   # Network
   dio: ^5.3.4
   
