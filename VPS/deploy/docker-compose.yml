@@ -40,7 +40,7 @@ services:
   # 4. Backend (Django)
   backend:
     build:
-      context: ../Server
+      context: ../../Server
       dockerfile: Dockerfile
     container_name: vivaclub_backend
     restart: unless-stopped
