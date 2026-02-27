@@ -47,6 +47,8 @@ services:
     command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-vivaclub_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-vivaclub}
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
