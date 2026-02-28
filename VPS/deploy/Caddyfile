@@ -20,6 +20,7 @@ vivaclubs.site, www.vivaclubs.site {
 
 # 2. LiveKit Traffic
 # Note: LiveKit is running on host network, so proxy to localhost
+livekit.vivaclubs.site {
     reverse_proxy 217.216.108.16:7880
 }
 
