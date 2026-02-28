@@ -17,3 +17,10 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class AdminUserListView(generics.ListAPIView):
+    """Admin only API to list all users"""
+    queryset = User.objects.all().order_by('-date_joined')
+    permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
+    serializer_class = UserSerializer

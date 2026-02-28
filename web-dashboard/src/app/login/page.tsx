@@ -34,9 +34,22 @@ export default function LoginPage() {
                 throw new Error(data.detail || "Invalid credentials");
             }
 
+            // Verify the user is an admin
+            const profileRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/profile/`, {
+                headers: {
+                    'Authorization': `Bearer ${data.access}`
+                }
+            });
+            const profileData = await profileRes.json();
+
+            if (!profileRes.ok || !profileData.is_staff) {
+                throw new Error("Access Denied: You must be an administrator to access the dashboard.");
+            }
+
             // In a real app, you might want more secure storage, but localStorage is fine for this MVP
             localStorage.setItem('adminToken', data.access);
             localStorage.setItem('adminRefreshToken', data.refresh);
+            localStorage.setItem('adminProfile', JSON.stringify(profileData));
 
             // Force reload to re-initialize WebSockets with the new token
             window.location.href = "/";

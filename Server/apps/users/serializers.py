@@ -11,8 +11,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number', 'role', 'display_name', 'license_id', 'specialty', 'verified_at', 'is_online', 'ghost_profile']
-        read_only_fields = ['id', 'role', 'verified_at', 'is_online', 'ghost_profile']
+        fields = ['id', 'username', 'email', 'phone_number', 'role', 'display_name', 'license_id', 'specialty', 'verified_at', 'is_online', 'is_staff', 'ghost_profile']
+        read_only_fields = ['id', 'role', 'verified_at', 'is_online', 'is_staff', 'ghost_profile']
 
     def get_ghost_profile(self, obj):
         # Return simple ghost profile info

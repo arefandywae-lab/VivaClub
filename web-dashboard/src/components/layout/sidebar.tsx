@@ -1,7 +1,17 @@
 import { Home, Users, Settings, Activity } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export function Sidebar() {
+    const [profile, setProfile] = useState<any>(null);
+
+    useEffect(() => {
+        try {
+            const p = localStorage.getItem('adminProfile');
+            if (p) setProfile(JSON.parse(p));
+        } catch (e) { }
+    }, []);
+
     return (
         <div className="flex h-screen w-64 flex-col border-r bg-slate-950 text-slate-300">
             <div className="flex h-16 items-center border-b border-slate-800 px-6">
@@ -26,12 +36,16 @@ export function Sidebar() {
 
             <div className="border-t border-slate-800 p-4">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold">
-                        A
+                    <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                        {profile?.ghost_profile?.avatar ? (
+                            <img src={profile.ghost_profile.avatar} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            profile?.display_name?.charAt(0) || "A"
+                        )}
                     </div>
-                    <div>
-                        <p className="text-sm font-medium text-white">Admin User</p>
-                        <p className="text-xs text-slate-500">admin@vivaclubs.site</p>
+                    <div className="overflow-hidden">
+                        <p className="text-sm font-medium text-white truncate">{profile?.display_name || "Admin User"}</p>
+                        <p className="text-xs text-slate-500 truncate">{profile?.email || profile?.username || "admin@vivaclubs.site"}</p>
                     </div>
                 </div>
             </div>

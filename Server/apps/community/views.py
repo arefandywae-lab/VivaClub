@@ -674,8 +674,48 @@ class BlockUserViewSet(viewsets.GenericViewSet):
 # --- 🚨 ADMIN DASHBOARD APIS 🚨 --- #
 
 class AdminRoomActionView(APIView):
-    """Admin-only API to perform strong actions on a room (e.g. Force Close)"""
+    """Admin-only API to perform strong actions on a room (e.g. Force Close, Kick, Mute, List Participants)"""
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def get(self, request, pk, action):
+        room = get_object_or_404(Room, pk=pk)
+        
+        if action == 'participants':
+            from livekit import api
+            import os
+            from asgiref.sync import async_to_sync
+            
+            ws_url = os.environ.get('LIVEKIT_API_URL')
+            api_key = os.environ.get('LIVEKIT_API_KEY')
+            api_secret = os.environ.get('LIVEKIT_API_SECRET')
+            
+            if not api_key:
+                return Response({"error": "LiveKit credentials not configured"}, status=500)
+                
+            async def get_parts():
+                lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
+                try:
+                    res = await lkapi.room.list_participants(api.ListParticipantsRequest(room=str(room.id)))
+                    return res.participants
+                except Exception as e:
+                    return []
+                finally:
+                    await lkapi.aclose()
+            
+            participants = async_to_sync(get_parts)()
+            data = []
+            for p in participants:
+                data.append({
+                    "identity": p.identity,
+                    "name": p.name,
+                    "state": getattr(p, 'state', 0),
+                    "joined_at": getattr(p, 'joined_at', 0),
+                    "is_publisher": getattr(p, 'is_publisher', False),
+                    "tracks": [{"sid": t.sid, "type": t.type, "muted": getattr(t, 'muted', False)} for t in getattr(p, 'tracks', [])]
+                })
+            return Response(data)
+            
+        return Response({"error": "Invalid action"}, status=400)
 
     def post(self, request, pk, action):
         room = get_object_or_404(Room, pk=pk)
@@ -700,6 +740,54 @@ class AdminRoomActionView(APIView):
             )
             return Response({"message": f"Room {room.id} forcefully closed"})
             
+        elif action == 'mute':
+            identity = request.data.get('identity')
+            track_sid = request.data.get('track_sid')
+            
+            if not identity or not track_sid:
+                return Response({"error": "identity and track_sid required"}, status=400)
+                
+            from livekit import api
+            import os
+            from asgiref.sync import async_to_sync
+            
+            async def mute_track():
+                lkapi = api.LiveKitAPI(os.environ.get('LIVEKIT_API_URL'), os.environ.get('LIVEKIT_API_KEY'), os.environ.get('LIVEKIT_API_SECRET'))
+                try:
+                    await lkapi.room.mute_published_track(api.MuteRoomTrackRequest(
+                        room=str(room.id), identity=identity, track_sid=track_sid, muted=True
+                    ))
+                except Exception as e:
+                    pass # Ignore if not found
+                finally:
+                    await lkapi.aclose()
+                    
+            async_to_sync(mute_track)()
+            return Response({"message": f"Muted {identity}"})
+            
+        elif action == 'kick':
+            identity = request.data.get('identity')
+            if not identity:
+                return Response({"error": "identity required"}, status=400)
+                
+            from livekit import api
+            import os
+            from asgiref.sync import async_to_sync
+            
+            async def kick_user():
+                lkapi = api.LiveKitAPI(os.environ.get('LIVEKIT_API_URL'), os.environ.get('LIVEKIT_API_KEY'), os.environ.get('LIVEKIT_API_SECRET'))
+                try:
+                    await lkapi.room.remove_participant(api.RoomParticipantIdentity(
+                        room=str(room.id), identity=identity
+                    ))
+                except Exception as e:
+                    pass
+                finally:
+                    await lkapi.aclose()
+                    
+            async_to_sync(kick_user)()
+            return Response({"message": f"Kicked {identity}"})
+
         return Response({"error": "Invalid action"}, status=400)
 
 
