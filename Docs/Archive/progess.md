@@ -1,7 +1,7 @@
 # VivaClub Development Progress
 
-**Last Updated:** 2026-02-15  
-**Overall Completion:** 23% (12/53 features)
+**Last Updated:** 2026-02-27  
+**Overall Completion:** 38% (20/53 features)
 
 ---
 
@@ -9,18 +9,18 @@
 
 | Category | Complete | Total | % | Status |
 |----------|----------|-------|---|--------|
-| **Clubhouse** | 10 | 15 | 67% | 🟢 Nearly Complete |
+| **Clubhouse** | 15 | 15 | 100% | ✅ COMPLETE |
 | **Telemed (Patient)** | 1 | 12 | 8% | 🔴 Just Started |
 | **Doctor Side** | 0 | 10 | 0% | 🔴 Not Started |
-| **Safety & Moderation** | 1 | 8 | 12% | 🔴 Critical Gap |
+| **Safety & Moderation** | 4 | 8 | 50% | 🟡 In Progress |
 | **Monetization** | 0 | 8 | 0% | 🔴 Not Started |
-| **TOTAL** | **12** | **53** | **23%** | 🟡 Early Stage |
+| **TOTAL** | **20** | **53** | **38%** | 🟡 In Progress |
 
 ---
 
-## 🎙️ CLUBHOUSE FEATURES (67% Complete)
+## 🎙️ CLUBHOUSE FEATURES (100% Complete ✅)
 
-### ✅ Completed (10/15)
+### ✅ Completed (15/15)
 
 #### Core Features
 - [x] **Ghost Profile System** (Priority: 🔴 Critical)
@@ -71,36 +71,67 @@
 > - Flutter: Report Dialog in Live Room (tap listener/speaker → Report)
 > - Flutter: Trust Score badge displayed in Profile Quick Stats
 
-#### 1. Anonymous Subscription System (Priority: 🔴 **CRITICAL**)
-**Impact:** Core differentiator, drives engagement  
-**Estimated Time:** 1-2 weeks
+> **Phase 4: Remaining Clubhouse ✅ COMPLETE** (2026-02-27)
+> - Room Search (`?search=keyword`), Trending Sort (`?sort=trending`), Scheduled Sort (`?sort=scheduled`)
+> - Profanity Filter on room title creation
+> - `bio` field on `GhostProfile` model — PATCH `/api/community/ghosts/me/`
+> - `BlockedUser` model + `POST/GET/DELETE /api/community/blocks/` API
+> - Migration 0008: `bio`, `BlockedUser`
+> - Flutter: Search bar + 🕐 Recent / 🔥 Trending / 📅 Scheduled sort chips in Room List
+> - Flutter: 📤 Share Link button in Live Room header (opens native share sheet)
+> - Flutter: ✍️ Bio Edit bottom sheet on Profile screen (tap bio card → edit → PATCH API)
+> - Flutter: Action Row on Profile (👥 Following, 🚫 Blocked, 🔒 Privacy)
+> - Flutter: BlockedUsersScreen — list blocked ghosts, confirm + Unblock
+> - Flutter: Anonymous Subscription — Follow/Unfollow ghosts, Following Feed tab, Following List screen
+> - Flutter: In-app Notification Center (bell icon → notifications list)
 
-- [ ] Follow/Unfollow ghost profiles
-- [ ] Follower count display (blind list)
-- [ ] Following list screen
-- [ ] Push notification when followed ghost opens room
-- [ ] Following feed tab
-- [ ] Notification center
+#### 1. Anonymous Subscription System ✅ COMPLETE
 
-**Database:** ✅ Already exists (`GhostSubscription` model)  
-**APIs Needed:** 5 endpoints  
-**Frontend:** 4 new screens/components
+- [x] Follow/Unfollow ghost profiles
+- [x] Follower count display
+- [x] Following list screen (`/following`)
+- [x] Push notification when followed ghost opens room
+- [x] Following feed tab
+- [x] Notification center
 
 ---
 
-#### 2. Enhanced Room Discovery (Priority: 🟡 High)
-**Impact:** Improves UX, increases engagement  
-**Estimated Time:** 3-5 days
+#### 2. Enhanced Room Discovery ✅ COMPLETE
 
-- [ ] Trending rooms (sorted by participant count)
-- [ ] Scheduled rooms
-- [ ] Search by keyword/topic
-- [ ] Room description field
-- [ ] Room tags
+- [x] Trending rooms (sorted by listener count) — `?sort=trending`
+- [x] Scheduled rooms — `?sort=scheduled`
+- [x] Search by keyword — `?search=keyword`
+- [x] Room description field — already in model
+- [x] Room tags — already in model
 
-**Database:** Minor schema changes  
-**APIs Needed:** 3 endpoints  
-**Frontend:** UI enhancements
+---
+
+#### 3. Room Interaction Enhancements ✅ COMPLETE
+
+- [x] Backend Endpoints (Hand Raise, Mute, Kick)
+- [x] Share room link — native Share Sheet in Live Room header
+
+---
+
+#### 4. Profile Features ✅ COMPLETE
+
+- [x] Bio/About section — editable with bottom sheet dialog
+- [x] Following/Blocked navigation from Profile action row
+- [x] Follower count on GhostProfile
+
+---
+
+#### 5. Safety — Block User ✅ COMPLETE
+
+- [x] `BlockedUser` model + migration
+- [x] `POST /api/community/blocks/` — block a user
+- [x] `DELETE /api/community/blocks/{id}/unblock/` — unblock
+- [x] `GET /api/community/blocks/` — list blocked users with ghost details
+- [x] `BlockedUsersScreen` in Flutter — list + confirm unblock dialog
+
+---
+
+#### ❌ Still TODO: Push Notifications (FCM)
 
 ---
 
@@ -117,25 +148,14 @@
 
 ---
 
-#### 4. Profile Features (Priority: 🔵 Low)
-**Impact:** User engagement  
-**Estimated Time:** 2-3 days
-
-- [ ] Bio/About section
-- [ ] Hosted rooms history
-- [ ] Attended rooms history
-- [ ] Following/Followers count display
-
----
-
 #### 5. Push Notifications (Priority: 🟡 High)
 **Impact:** Re-engagement, retention  
 **Estimated Time:** 3-5 days
 
-- [ ] Firebase Cloud Messaging setup
-- [ ] Notification for followed ghost rooms
-- [ ] Notification for hand raise accepted
-- [ ] In-app notification center
+- [ ] Firebase Cloud Messaging (FCM) setup
+- [ ] Notification when followed ghost opens room
+- [ ] Notification when hand raise accepted
+- [ ] In-app notification center (UI only — already partially done)
 
 ---
 

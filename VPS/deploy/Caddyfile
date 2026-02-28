@@ -20,6 +20,10 @@ vivaclubs.site, www.vivaclubs.site {
 
 # 2. LiveKit Traffic
 # Note: LiveKit is running on host network, so proxy to localhost
-livekit.vivaclubs.site {
     reverse_proxy localhost:7880
+}
+
+# 3. Next.js Admin Dashboard
+dashboard.vivaclubs.site {
+    reverse_proxy vivaclub_dashboard:3000
 }

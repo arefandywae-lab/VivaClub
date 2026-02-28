@@ -103,6 +103,23 @@ services:
     networks:
       - vivanet
 
+  # 9. Next.js Web Dashboard
+  dashboard:
+    build:
+      context: ../../web-dashboard
+      dockerfile: Dockerfile
+    container_name: vivaclub_dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.vivaclubs.site
+      - NEXT_PUBLIC_WS_URL=wss://api.vivaclubs.site
+    depends_on:
+      - backend
+    networks:
+      - vivanet
+
 volumes:
   postgres_data:
   caddy_data:

@@ -8,7 +8,9 @@ from .views import (
     FCMTokenView,
     RoomReportViewSet,
     UserTrustScoreView,
-    BlockUserViewSet
+    BlockUserViewSet,
+    LiveKitWebhookView,
+    AdminRoomActionView
 )
 
 router = DefaultRouter()
@@ -23,4 +25,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('fcm-token/', FCMTokenView.as_view(), name='fcm-token'),
     path('trust-score/me/', UserTrustScoreView.as_view(), name='trust-score-me'),
+    path('webhook/livekit/', LiveKitWebhookView.as_view(), name='webhook-livekit'),
+    path('admin/rooms/<uuid:pk>/<str:action>/', AdminRoomActionView.as_view(), name='admin-room-action'),
 ]

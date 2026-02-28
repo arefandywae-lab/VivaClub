@@ -139,15 +139,8 @@ class _RoomListScreenState extends State<RoomListScreen>
                     if (_selectedCategory == null) {
                       return _buildCategoryGrid();
                     } else {
-                      return Column(
-                        children: [
-                          _buildSearchAndSortBar(),
-                          Expanded(
-                            child: _buildRoomListWithTabs(
-                              List<Map<String, dynamic>>.from(state.rooms),
-                            ),
-                          ),
-                        ],
+                      return _buildRoomListWithTabs(
+                        List<Map<String, dynamic>>.from(state.rooms),
                       );
                     }
                   }
@@ -235,118 +228,217 @@ class _RoomListScreenState extends State<RoomListScreen>
               ],
             ),
           ),
-          // User Avatar from ghost profile
-          BlocBuilder<ProfileBloc, ProfileState>(
-            builder: (context, profileState) {
-              final ghostName = (profileState is ProfileLoaded)
-                  ? (profileState.user['ghost_profile']?['display_name'] ??
-                        'User')
-                  : 'User';
-              return Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                ),
-                child: Text(
-                  EmojiUtils.getEmojiForName(ghostName),
-                  style: TextStyle(fontSize: 24.sp),
-                ),
-              );
-            },
+          // Search icon + User Avatar
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Search icon hidden (disabled for now)
+              // User Avatar from ghost profile
+              BlocBuilder<ProfileBloc, ProfileState>(
+                builder: (context, profileState) {
+                  final ghostName = (profileState is ProfileLoaded)
+                      ? (profileState.user['ghost_profile']?['display_name'] ??
+                            'User')
+                      : 'User';
+                  return Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black12, blurRadius: 4),
+                      ],
+                    ),
+                    child: Text(
+                      EmojiUtils.getEmojiForName(ghostName),
+                      style: TextStyle(fontSize: 24.sp),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSearchAndSortBar() {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 4.h),
-      child: Column(
-        children: [
-          TextField(
-            controller: _searchController,
-            onSubmitted: (val) {
-              context.read<RoomBloc>().add(
-                RoomLoad(search: val.trim(), sort: _sortMode),
-              );
-            },
-            decoration: InputDecoration(
-              hintText: 'Search rooms...',
-              hintStyle: TextStyle(color: AppTheme.textGrey, fontSize: 14.sp),
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {});
-                        context.read<RoomBloc>().add(RoomLoad(sort: _sortMode));
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: EdgeInsets.symmetric(
-                vertical: 0,
-                horizontal: 16.w,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.r),
-                borderSide: BorderSide.none,
-              ),
-            ),
+  // ignore: unused_element — kept for future use (search disabled)
+  void _showSearchBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
           ),
-          SizedBox(height: 8.h),
-          Row(
-            children: ['recent', 'trending', 'scheduled'].map((mode) {
-              final isSelected = _sortMode == mode;
-              return Padding(
-                padding: EdgeInsets.only(right: 8.w),
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() => _sortMode = mode);
+          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 32.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                '🔍 Search Rooms',
+                style: TextStyle(
+                  fontSize: 17.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              SizedBox(height: 12.h),
+              // Search field
+              TextField(
+                controller: _searchController,
+                autofocus: true,
+                onSubmitted: (val) {
+                  Navigator.pop(ctx);
+                  setState(() {});
+                  context.read<RoomBloc>().add(
+                    RoomLoad(search: val.trim(), sort: _sortMode),
+                  );
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search by room name or topic...',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textGrey,
+                    fontSize: 14.sp,
+                  ),
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setModalState(() {});
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: AppTheme.background,
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 0,
+                    horizontal: 16.w,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (val) => setModalState(() {}),
+              ),
+              SizedBox(height: 16.h),
+              // Sort chips inside modal
+              Text(
+                'SORT BY',
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textGrey,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              SizedBox(height: 8.h),
+              Wrap(
+                spacing: 8.w,
+                runSpacing: 8.h,
+                children: ['recent', 'trending', 'scheduled'].map((mode) {
+                  final isSelected = _sortMode == mode;
+                  return Padding(
+                    padding: EdgeInsets.only(right: 8.w),
+                    child: GestureDetector(
+                      onTap: () {
+                        setModalState(() => _sortMode = mode);
+                        setState(() => _sortMode = mode);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 8.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppTheme.primary
+                              : AppTheme.background,
+                          borderRadius: BorderRadius.circular(20.r),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppTheme.primary
+                                : Colors.grey.shade300,
+                          ),
+                        ),
+                        child: Text(
+                          mode == 'recent'
+                              ? '🕐 Recent'
+                              : mode == 'trending'
+                              ? '🔥 Trending'
+                              : '📅 Scheduled',
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.textDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              SizedBox(height: 20.h),
+              // Search button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.search_rounded, color: Colors.white),
+                  label: const Text(
+                    'Search',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    setState(() {});
                     context.read<RoomBloc>().add(
                       RoomLoad(
                         search: _searchController.text.trim(),
-                        sort: mode,
+                        sort: _sortMode,
                       ),
                     );
                   },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 6.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(20.r),
-                      border: Border.all(
-                        color: isSelected
-                            ? AppTheme.primary
-                            : Colors.grey.shade300,
-                      ),
-                    ),
-                    child: Text(
-                      mode == 'recent'
-                          ? '🕐 Recent'
-                          : mode == 'trending'
-                          ? '🔥 Trending'
-                          : '📅 Scheduled',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : AppTheme.textDark,
-                      ),
-                    ),
-                  ),
                 ),
-              );
-            }).toList(),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -439,18 +531,35 @@ class _RoomListScreenState extends State<RoomListScreen>
   Widget _buildRoomListWithTabs(List<Map<String, dynamic>> allRooms) {
     return Column(
       children: [
-        // TabBar
+        // Pill-style TabBar (matching Upcoming/History style)
         Container(
-          color: Colors.white,
+          margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16.r),
+          ),
           child: TabBar(
             controller: _tabController,
-            labelColor: AppTheme.primary,
+            padding: EdgeInsets.zero,
+            indicatorPadding: EdgeInsets.zero,
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            indicator: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16.r),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            labelColor: AppTheme.textDark,
             unselectedLabelColor: AppTheme.textGrey,
-            indicatorColor: AppTheme.primary,
-            indicatorWeight: 3,
+            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
             tabs: const [
-              Tab(text: 'All Rooms'),
-              Tab(text: 'Following'),
+              Tab(text: '🏠 All Rooms'),
+              Tab(text: '👥 Following'),
             ],
           ),
         ),

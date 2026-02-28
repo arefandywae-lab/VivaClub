@@ -9,7 +9,7 @@ class FollowingRepository {
   Future<Map<String, dynamic>> followGhost(String ghostId) async {
     try {
       final response = await _dioClient.dio.post(
-        '/community/ghosts/$ghostId/follow/',
+        '/api/community/ghosts/$ghostId/follow/',
       );
       return response.data;
     } catch (e) {
@@ -21,7 +21,7 @@ class FollowingRepository {
   Future<Map<String, dynamic>> unfollowGhost(String ghostId) async {
     try {
       final response = await _dioClient.dio.post(
-        '/community/ghosts/$ghostId/unfollow/',
+        '/api/community/ghosts/$ghostId/unfollow/',
       );
       return response.data;
     } catch (e) {
@@ -32,8 +32,13 @@ class FollowingRepository {
   /// Get list of ghosts I'm following
   Future<List<Map<String, dynamic>>> getFollowingList() async {
     try {
-      final response = await _dioClient.dio.get('/community/following/');
-      return List<Map<String, dynamic>>.from(response.data);
+      final response = await _dioClient.dio.get('/api/community/following/');
+      if (response.data is List) {
+        return List<Map<String, dynamic>>.from(response.data);
+      }
+      // Handle paginated response
+      final results = response.data['results'] ?? response.data;
+      return List<Map<String, dynamic>>.from(results);
     } catch (e) {
       throw Exception('Failed to get following list: $e');
     }
@@ -42,7 +47,9 @@ class FollowingRepository {
   /// Get rooms from followed ghosts (Following Feed)
   Future<Map<String, dynamic>> getFollowingFeed() async {
     try {
-      final response = await _dioClient.dio.get('/community/following/feed/');
+      final response = await _dioClient.dio.get(
+        '/api/community/following/feed/',
+      );
       return response.data;
     } catch (e) {
       throw Exception('Failed to get following feed: $e');

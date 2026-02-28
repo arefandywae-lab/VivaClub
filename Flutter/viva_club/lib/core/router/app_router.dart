@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:viva_club/core/router/go_router_refresh_stream.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -13,7 +14,11 @@ import '../../features/home/presentation/screens/dashboard_screen.dart';
 import '../../features/clinical/presentation/screens/telemed_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/community/presentation/screens/following_list_screen.dart';
+import '../../features/community/presentation/bloc/following_bloc.dart';
+import '../../features/community/data/following_repository.dart';
+import '../../core/network/dio_client.dart';
 import '../../features/profile/presentation/screens/blocked_users_screen.dart';
+import '../../features/profile/presentation/screens/settings_screen.dart';
 import '../widgets/scaffold_with_nav_bar.dart';
 
 // Keys for navigation state preservation
@@ -89,6 +94,11 @@ class AppRouter {
         builder: (context, state) => const CreateRoomScreen(),
       ),
       GoRoute(
+        path: '/settings',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
         path: '/blocked_users',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const BlockedUsersScreen(),
@@ -96,7 +106,10 @@ class AppRouter {
       GoRoute(
         path: '/following',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const FollowingListScreen(),
+        builder: (context, state) => BlocProvider(
+          create: (_) => FollowingBloc(FollowingRepository(DioClient())),
+          child: const FollowingListScreen(),
+        ),
       ),
 
       // Screens WITH Bottom Nav (ShellRoute)

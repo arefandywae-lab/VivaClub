@@ -669,3 +669,92 @@ class BlockUserViewSet(viewsets.GenericViewSet):
         """DELETE /api/community/blocks/{id}/unblock/ - Unblock a user"""
         BlockedUser.objects.filter(blocker=request.user, blocked_id=pk).delete()
         return Response({'message': 'User unblocked'})
+
+
+# --- 🚨 ADMIN DASHBOARD APIS 🚨 --- #
+
+class AdminRoomActionView(APIView):
+    """Admin-only API to perform strong actions on a room (e.g. Force Close)"""
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def post(self, request, pk, action):
+        room = get_object_or_404(Room, pk=pk)
+        
+        if action == 'close':
+            room.is_active = False
+            room.save()
+            
+            # Send WebSocket event to dashboard to update UI
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "admin_updates",
+                {
+                    "type": "admin_update",
+                    "payload": {
+                        "event": "room_closed",
+                        "room_id": str(room.id)
+                    }
+                }
+            )
+            return Response({"message": f"Room {room.id} forcefully closed"})
+            
+        return Response({"error": "Invalid action"}, status=400)
+
+
+class LiveKitWebhookView(APIView):
+    """
+    Receives events from LiveKit Server and broadcasts them via Django Channels 
+    to the Admin Dashboard (real-time updates).
+    """
+    permission_classes = [permissions.AllowAny] # webhook validation handled inside
+
+    def post(self, request):
+        import os
+        from livekit import api
+        
+        # 1. Verify Webhook Signature
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return Response({"error": "No authorization header"}, status=401)
+            
+        api_key = os.environ.get('LIVEKIT_API_KEY')
+        api_secret = os.environ.get('LIVEKIT_API_SECRET')
+        
+        if not api_key or not api_secret:
+            return Response({"error": "Server not configured for webhooks"}, status=500)
+
+        try:
+            receiver = api.WebhookReceiver(api_key, api_secret)
+            # LiveKit python SDK expects the raw body as bytes/string
+            event = receiver.receive(request.body.decode('utf-8'), auth_header)
+            
+            # 2. Process Event and Broadcast to Admin Dashboard
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            
+            channel_layer = get_channel_layer()
+            
+            payload = {
+                "event": event.event,
+                "room_title": event.room.name if event.room else None,
+                "room_id": getattr(event.room, 'name', None), # Livekit room name usually mapped to our room ID
+                "participant_identity": event.participant.identity if event.participant else None,
+                "participant_name": event.participant.name if event.participant else None,
+            }
+            
+            async_to_sync(channel_layer.group_send)(
+                "admin_updates",
+                {
+                    "type": "admin_update",
+                    "payload": payload
+                }
+            )
+            
+            return Response({"success": True})
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": "Invalid webhook", "details": str(e)}, status=400)

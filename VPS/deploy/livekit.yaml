@@ -25,6 +25,11 @@ keys:
     # To generate new keys: docker run --rm livekit/livekit-cli generate-keys
     APIy9W5hQkRkZQa: Qz5Y9ZQaH3k6s4Fq2f7zW3jV5uK9LxP1yNmB4vRcTxw
 
+webhook:
+    api_key: APIy9W5hQkRkZQa
+    urls:
+        - https://api.vivaclubs.site/api/community/webhook/livekit/
+
 logging:
     json: false
     level: info

@@ -35,10 +35,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
   void _shareRoomLink() {
     final deepLink = 'https://vivaclub.app/rooms/${widget.roomId}';
-    Share.share(
-      '💬 Join me in "${widget.title}" on VivaClub — a safe space to talk! $deepLink',
-      subject: 'Join my VivaClub room',
-    );
+    try {
+      Share.share(
+        '💬 Join me in "${widget.title}" on VivaClub — a safe space to talk! $deepLink',
+        subject: 'Join my VivaClub room',
+      );
+    } catch (e) {
+      debugPrint('Share failed: $e');
+    }
   }
 
   void _leaveRoom() async {
