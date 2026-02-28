@@ -60,7 +60,8 @@ export default function Home() {
     }
   }, [lastMessage]);
 
-  const handleCloseRoom = async (roomId: string) => {
+  const handleCloseRoom = async (e: React.MouseEvent, roomId: string) => {
+    e.stopPropagation();
     if (!confirm("Are you sure you want to FORCE CLOSE this room?")) return;
     try {
       await apiFetch(`/community/admin/rooms/${roomId}/close/`, { method: "POST" });
@@ -98,7 +99,11 @@ export default function Home() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {rooms.map((room) => (
-            <Card key={room.id} className="overflow-hidden hover:shadow-md transition-shadow">
+            <Card
+              key={room.id}
+              className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer hover:border-emerald-300"
+              onClick={() => router.push(`/rooms/${room.id}`)}
+            >
               <div className="h-2 bg-gradient-to-r from-emerald-400 to-teal-500" />
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
@@ -120,12 +125,18 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-2xl border">
-                    {room.host?.avatar_emoji || "👻"}
+                  <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center text-xl overflow-hidden border">
+                    {room.host_details?.avatar_url ? (
+                      <img src={room.host_details.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-slate-500 text-sm font-bold">
+                        {room.host_details?.display_name?.charAt(0) || "?"}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-900 line-clamp-1">
-                      {room.host?.display_name || "Unknown Ghost"}
+                      {room.host_details?.display_name || "Unknown Host"}
                     </p>
                     <p className="text-xs text-slate-500">Host</p>
                   </div>
@@ -141,7 +152,7 @@ export default function Home() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleCloseRoom(room.id)}
+                      onClick={(e) => handleCloseRoom(e, room.id)}
                       className="gap-1.5"
                     >
                       <DoorOpen className="h-4 w-4" />
