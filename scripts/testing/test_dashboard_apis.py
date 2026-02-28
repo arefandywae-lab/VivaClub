@@ -2,8 +2,8 @@ import requests
 import sys
 
 BASE_URL = "https://vivaclubs.site"
-USERNAME = "admin"
-PASSWORD = "vivaclub_admin_1234"
+USERNAME = "audi"
+PASSWORD = "Alfata0232"
 
 def print_result(step, name, res):
     if res.status_code in [200, 201]:
