@@ -14,9 +14,9 @@ rtc:
     node_ip: "217.216.108.16"
 
 redis:
-    address: "localhost:6379"
+    address: "127.0.0.1:6379"
     username: ""
-    password: "viva-redis-pass"
+    password: "!+/l(){Lo2?j+I3j?{md9pRwfs>[ZsV+jIoCYFNS>V?"
     db: 0
     use_tls: false
 
