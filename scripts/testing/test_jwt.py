@@ -1,0 +1,10 @@
+import jwt
+
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiTG91ZCBTa3VuayAjMjA1IiwibWV0YWRhdGEiOiJ7XCJyb2xlXCI6IFwicGF0aWVudFwifSIsInZpZGVvIjp7InJvb21Kb2luIjp0cnVlLCJyb29tIjoiZDEzMGEyM2YtMzA2YS00NTc0LWEwODItMzQwZWMwMzY2ZmVmIiwiY2FuUHVibGlzaCI6ZmFsc2UsImNhblN1YnNjcmliZSI6dHJ1ZSwiY2FuUHVibGlzaERhdGEiOnRydWUsImNhblVwZGF0ZU93bk1ldGFkYXRhIjp0cnVlfSwic3ViIjoiM2Y4MDM1MDQtNDRiYy00ZGU3LWExYTEtNDA0NGMzYTMxMGY0IiwiaXNzIjoiQVBJeTlXNWhRa1JrWlFhIiwibmJmIjoxNzcyMjY0Mjg5LCJleHAiOjE3NzIyODU4ODl9.ApDDPCiPAqh8XCpX-vRDYXm6AO3qQIjMZdpf1KInkuk"
+secret = "Qz5Y9ZQaH3k6s4Fq2f7zW3jV5uK9LxP1yNmB4vRcTxw"
+
+try:
+    decoded = jwt.decode(token, secret, algorithms=["HS256"])
+    print("VALID SIGNATURE")
+except Exception as e:
+    print("INVALID SIGNATURE:", e)
