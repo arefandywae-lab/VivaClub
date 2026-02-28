@@ -139,11 +139,15 @@ else:
 
 
 # Caches & Redis
-redis_url = os.environ.get('REDIS_URL', 'redis://:viva-redis-pass@redis:6379/1')
+import re
+raw_redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/1')
+redis_pass = os.environ.get('REDIS_PASSWORD', 'viva-redis-pass')
 
-redis_password = os.environ.get('REDIS_PASSWORD')
-if redis_password and 'redis://:' not in redis_url and '@' not in redis_url:
-    redis_url = redis_url.replace('redis://', f'redis://:{redis_password}@')
+# Force inject the correct password from REDIS_PASSWORD into the URL
+if '@' in raw_redis_url:
+    redis_url = re.sub(r'redis://(.*?@)', f'redis://:{redis_pass}@', raw_redis_url)
+else:
+    redis_url = raw_redis_url.replace('redis://', f'redis://:{redis_pass}@')
 
 os.environ['REDIS_URL'] = redis_url
 
