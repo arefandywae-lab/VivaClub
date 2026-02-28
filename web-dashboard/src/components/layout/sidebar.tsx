@@ -1,4 +1,4 @@
-import { Home, Users, Settings, Activity } from "lucide-react";
+import { Home, Users, Settings, Activity, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -48,6 +48,18 @@ export function Sidebar() {
                         <p className="text-xs text-slate-500 truncate">{profile?.email || profile?.username || "admin@vivaclubs.site"}</p>
                     </div>
                 </div>
+                <button
+                    onClick={() => {
+                        localStorage.removeItem('adminToken');
+                        localStorage.removeItem('adminRefreshToken');
+                        localStorage.removeItem('adminProfile');
+                        window.location.href = '/login';
+                    }}
+                    className="mt-4 flex w-full items-center justify-center rounded-md bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-500/20 transition-colors"
+                >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                </button>
             </div>
         </div>
     );
