@@ -111,8 +111,8 @@ services:
       context: ../../web-dashboard
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=https://api.vivaclubs.site
-        - NEXT_PUBLIC_WS_URL=wss://api.vivaclubs.site
+        - NEXT_PUBLIC_API_URL=https://vivaclubs.site
+        - NEXT_PUBLIC_WS_URL=wss://vivaclubs.site
     container_name: vivaclub_dashboard
     restart: unless-stopped
     ports:

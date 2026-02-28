@@ -28,7 +28,7 @@ keys:
 webhook:
     api_key: APIy9W5hQkRkZQa
     urls:
-        - https://api.vivaclubs.site/api/community/webhook/livekit/
+        - https://vivaclubs.site/api/community/webhook/livekit/
 
 logging:
     json: false
