@@ -139,7 +139,7 @@ else:
 
 
 # Caches & Redis
-redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/1')
+redis_url = os.environ.get('REDIS_URL', 'redis://:viva-redis-pass@redis:6379/1')
 
 CACHES = {
     'default': env.cache('REDIS_URL', default=redis_url),
