@@ -724,20 +724,25 @@ class AdminRoomActionView(APIView):
             room.is_active = False
             room.save()
             
-            # Send WebSocket event to dashboard to update UI
-            from channels.layers import get_channel_layer
-            from asgiref.sync import async_to_sync
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "admin_updates",
-                {
-                    "type": "admin_update",
-                    "payload": {
-                        "event": "room_closed",
-                        "room_id": str(room.id)
+            # Send WebSocket event to dashboard to update UI (non-critical, don't crash if Redis is down)
+            try:
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    "admin_updates",
+                    {
+                        "type": "admin_update",
+                        "payload": {
+                            "event": "room_closed",
+                            "room_id": str(room.id)
+                        }
                     }
-                }
-            )
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to broadcast room_closed event: {e}")
             return Response({"message": f"Room {room.id} forcefully closed"})
             
         elif action == 'mute':

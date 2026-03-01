@@ -139,33 +139,37 @@ else:
 
 
 # Caches & Redis
-import urllib.parse
+import urllib.parse as urlparse_mod
 raw_redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/1')
 
-# For the default password, or a password that might have special characters (!, +, etc.)
 redis_pass_raw = os.environ.get('REDIS_PASSWORD', 'viva-redis-pass')
-redis_pass_encoded = urllib.parse.quote(redis_pass_raw)
+redis_pass_encoded = urlparse_mod.quote(redis_pass_raw, safe='')
 
-# Extract just the host and port for Channels Redis config
-if '@' in raw_redis_url:
-    clean_redis_url = 'redis://' + raw_redis_url.split('@')[-1]
-else:
-    clean_redis_url = raw_redis_url
+# Strip any existing credentials from the URL to get host:port/db
+parsed = urlparse_mod.urlparse(raw_redis_url)
+redis_host = parsed.hostname or 'redis'
+redis_port = parsed.port or 6379
+redis_db = int(parsed.path.lstrip('/') or '0') if parsed.path and parsed.path != '/' else 0
 
-# Cache still needs the auth encoded URL
-os.environ['REDIS_URL'] = clean_redis_url.replace('redis://', f'redis://:{redis_pass_encoded}@')
+# Build a clean authenticated URL for Django Cache
+redis_url = f'redis://:{redis_pass_encoded}@{redis_host}:{redis_port}/{redis_db}'
+os.environ['REDIS_URL'] = redis_url
 
 CACHES = {
-    'default': env.cache('REDIS_URL', default=os.environ['REDIS_URL']),
+    'default': env.cache('REDIS_URL', default=redis_url),
 }
 
 # Channels Layer provided by Redis
-# Channels Redis requires the password passed as a kwarg to avoid parsing issues with special symbols
+# Use the dict format with (host, port) tuple to avoid URL parsing issues with special chars in password
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [(clean_redis_url, {"password": redis_pass_raw})],
+            "hosts": [{
+                "address": (redis_host, redis_port),
+                "password": redis_pass_raw,
+                "db": redis_db,
+            }],
         },
     },
 }
