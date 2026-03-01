@@ -74,7 +74,6 @@ async def spawn_bot(req: SpawnBotRequest):
     bot = BotWorker(
         bot_id=bot_id,
         name=name,
-        backend_url=BACKEND_URL,
         livekit_url=LIVEKIT_URL,
         api_key=LIVEKIT_API_KEY,
         api_secret=LIVEKIT_API_SECRET,
@@ -208,7 +207,6 @@ async def create_room_with_bot(req: CreateRoomRequest):
     bot = BotWorker(
         bot_id=bot_id,
         name=name,
-        backend_url=BACKEND_URL,
         livekit_url=LIVEKIT_URL,
         api_key=LIVEKIT_API_KEY,
         api_secret=LIVEKIT_API_SECRET,
