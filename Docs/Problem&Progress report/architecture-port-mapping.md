@@ -15,9 +15,97 @@ VivaClub ใช้ **Microservices-oriented architecture** เล็กๆ เ�
 3. **Caddy:** Reverse Proxy สมัยใหม่ ใช้งานง่ายกว่า NGINX มาก และจุดเด่นสูงสุดคือ **ทำ HTTPS / SSL (Let's Encrypt) ให้อัตโนมัติ 100%** เพียงแค่ชี้ Domain และตั้งค่า 2-3 บรรทัด
 4. **Django + Daphne:** เร็วในการพัฒนา API ส่วน Daphne ทำหน้าที่เป็น ASGI Server เพื่อรองรับ Long-polling / WebSockets
 
+## 🔌 แผนภาพสถาปัตยกรรม (Architecture Diagram)
+
+```mermaid
+flowchart TB
+    %% External Clients
+    subgraph Clients ["📱 External Clients (Public Internet)"]
+        Flutter["Flutter Mobile App\n(Users)"]
+        Browser["Next.js Admin\nBrowser (Admins)"]
+    end
+
+    %% Caddy Gateway
+    subgraph Proxy ["🛡️ Reverse Proxy Gateway"]
+        Caddy["Caddy Server\nPort: 80, 443\n(Auto HTTPS/SSL)"]
+    end
+
+    %% Django Backend
+    subgraph API_Services ["🧠 Backend Services (Port: 8000)"]
+        DjangoAPI["Django REST Framework\n(HTTP API)"]
+        Daphne["Daphne ASGI\n(WebSockets)"]
+    end
+
+    %% Admin Panel
+    subgraph Admin_Frontend ["🤖 Admin Dashboard"]
+        NextJS["Next.js SSR Server\nPort: 3000"]
+    end
+
+    %% WebRTC Engine
+    subgraph Media_Server ["🎙️ LiveKit WebRTC Engine"]
+        LiveKitAPI["LiveKit API & Signaling\nPort: 7880 (HTTP/WS)"]
+        LiveKitRTC["LiveKit RTC Transport\nPort: 7882 (TCP/UDP)"]
+        LiveKitTURN["LiveKit TURN Server\nPort: 7885 (UDP)"]
+    end
+
+    %% Databases & Queues
+    subgraph Data_Layer ["🗄️ Database & Message Queue"]
+        Postgres[(PostgreSQL\nPort: 5432)]
+        Redis[(Redis\nPort: 6379)]
+    end
+    
+    %% AI Bot Service
+    subgraph AI_Bots ["🤖 AI Bot Service"]
+        BotWorker["Python Bot Worker\n(Redis Listener)"]
+    end
+
+    %% Connections: Client -> Gateway
+    Flutter -- "REST API (api/*)" --> Caddy
+    Flutter -- "In-App Notify (ws/*)" --> Caddy
+    Flutter -- "Signaling (WS 7880)" --> LiveKitAPI
+    Flutter -. "Audio Stream (UDP 7882)" .-> LiveKitRTC
+    
+    Browser -- "admin.vivaclubs.site" --> Caddy
+    
+    %% Connections: Gateway -> Internal Services
+    Caddy -- "Reverse Proxy" --> NextJS
+    Caddy -- "Reverse Proxy (HTTP)" --> DjangoAPI
+    Caddy -- "Reverse Proxy (WS)" --> Daphne
+
+    %% Connections: Next.js -> API
+    NextJS -- "Fetch API (admin UI)" --> DjangoAPI
+
+    %% Connections: API -> Databases
+    DjangoAPI -- "Read/Write Users, Rooms" --> Postgres
+    Daphne -- "Push notifications" --> Postgres
+
+    %% Connections: API/WS -> Redis -> Bots/Daphne
+    DjangoAPI -- "Publish Messages" --> Redis
+    Redis -- "Subscribe/Pick up" --> Daphne
+    Redis -- "Task Queue Queue" --> BotWorker
+
+    %% Connections: API ↔ LiveKit
+    DjangoAPI -- "Mute/Kick/Token (REST)" --> LiveKitAPI
+    LiveKitAPI -- "Webhooks (e.g., joined)" --> DjangoAPI
+    BotWorker -- "Join Room (Bot Identity)" --> LiveKitAPI
+    BotWorker -. "Bot Audio Stream" .-> LiveKitRTC
+    
+    classDef client fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef proxy fill:#fbf,stroke:#333,stroke-width:2px;
+    classDef backend fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef data fill:#bfb,stroke:#333,stroke-width:2px;
+    classDef rtc fill:#fbb,stroke:#333,stroke-width:2px;
+    
+    class Flutter,Browser client;
+    class Caddy proxy;
+    class DjangoAPI,Daphne,NextJS,BotWorker backend;
+    class Postgres,Redis data;
+    class LiveKitAPI,LiveKitRTC,LiveKitTURN rtc;
+```
+
 ---
 
-## 🔌 Port Mapping & Network Flow
+## 🔌 รายละเอียด Port Mapping & Network Flow
 
 นี่คือแผนผัง Port ที่เปิดใช้งานใน VPS ของ Docker Compose และหน้าที่ของมัน:
 
