@@ -1,33 +1,43 @@
 direction: right
 classes: {
   client: {
-    stroke: "#333333"
-    fill: "#f9f9f9"
     style: {
+      stroke: "#333333"
+      fill: "#f9f9f9"
       shadow: true
       border-radius: 8
     }
   }
   proxy: {
-    stroke: "#0066cc"
-    fill: "#e6f2ff"
+    style: {
+      stroke: "#0066cc"
+      fill: "#e6f2ff"
+    }
   }
   backend: {
-    stroke: "#009933"
-    fill: "#e6ffe6"
+    style: {
+      stroke: "#009933"
+      fill: "#e6ffe6"
+    }
   }
   media: {
-    stroke: "#cc0000"
-    fill: "#ffe6e6"
+    style: {
+      stroke: "#cc0000"
+      fill: "#ffe6e6"
+    }
   }
   database: {
-    stroke: "#9900cc"
-    fill: "#f2e6ff"
     shape: cylinder
+    style: {
+      stroke: "#9900cc"
+      fill: "#f2e6ff"
+    }
   }
   bot: {
-    stroke: "#e6b800"
-    fill: "#fffbe6"
+    style: {
+      stroke: "#e6b800"
+      fill: "#fffbe6"
+    }
   }
 }
 
@@ -38,11 +48,9 @@ description: "Detailed Component & Port Mapping"
 Public Internet: {
   Flutter: "Flutter Mobile (Users)" {
     class: client
-    shape: smartphone
   }
   AdminBrowser: "Next.js Admin UI" {
     class: client
-    shape: browser
   }
 }
 
@@ -56,7 +64,6 @@ Gateway: {
 
 %% Internal Network (VPS)
 Internal VPC: {
-  
   %% Backend Layer
   Backend Services: {
     DjangoAPI: "Django API (Sync)" {
@@ -104,7 +111,7 @@ Internal VPC: {
   }
 }
 
-%% --- COMMUNICATIONS ---
+%% === COMMUNICATIONS ===
 
 %% Public Internet to Gateway
 Public Internet.Flutter -> Gateway.Caddy: "1. REST API Requests (HTTPS)\nPOST /api/community/*"
@@ -116,7 +123,9 @@ Gateway.Caddy -> Public Internet.Flutter: "JSON Pusher (Event notifications)"
 Public Internet.Flutter -> Internal VPC.Media Cluster.LiveKitAPI: "3. Direct WSS Signaling (Port 7880)\n[Tokens, Room Joins, Mute state]"
 Internal VPC.Media Cluster.LiveKitAPI -> Public Internet.Flutter: "Events: RoomUpdates, ParticipantJoined"
 
-Public Internet.Flutter <-> Internal VPC.Media Cluster.LiveKitRTC: "4. Direct UDP Media (Port 7882)\n[Opus Audio Streams]"
+Public Internet.Flutter <-> Internal VPC.Media Cluster.LiveKitRTC: "4. Direct UDP Media (Port 7882)\n[Opus Audio Streams]" {
+  style.stroke-dash: 5
+}
 
 Public Internet.AdminBrowser -> Gateway.Caddy: "5. Browser Navigation (HTTPS)\nadmin.vivaclubs.site"
 
@@ -131,10 +140,17 @@ Gateway.Caddy -> Internal VPC.Backend Services.NextJS: "*.admin.* ➔ HTTP:3000"
 Internal VPC.Backend Services.NextJS -> Internal VPC.Backend Services.DjangoAPI: "Fetch Data / Admin Actions\nGET /api/auth/admin/*"
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Backend Services.NextJS: "Admin Statistics JSON"
 
-Internal VPC.Backend Services.DjangoAPI <-> Internal VPC.Data Storage.PostgreSQL: "Read/Write SQL Data" {
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.PostgreSQL: "Read/Write SQL Data" {
   style.stroke: "#666"
 }
-Internal VPC.Backend Services.DaphneWS <-> Internal VPC.Data Storage.PostgreSQL: "Check Auth State" {
+Internal VPC.Data Storage.PostgreSQL -> Internal VPC.Backend Services.DjangoAPI: "SQL Results" {
+  style.stroke: "#666"
+}
+
+Internal VPC.Backend Services.DaphneWS -> Internal VPC.Data Storage.PostgreSQL: "Check Auth State" {
+  style.stroke: "#666"
+}
+Internal VPC.Data Storage.PostgreSQL -> Internal VPC.Backend Services.DaphneWS: "Auth Results" {
   style.stroke: "#666"
 }
 
@@ -145,7 +161,7 @@ Internal VPC.Data Storage.Redis -> Internal VPC.Backend Services.DaphneWS: "2. C
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.Redis: "3. LPUSH Task Queue\n[Payload: bot_join_room_ID]"
 Internal VPC.Data Storage.Redis -> Internal VPC.Background Workers.PythonBot: "4. BLPOP Consume Task"
 
-%% API ↔ LiveKit Controller / Webhooks
+%% API <-> LiveKit Controller / Webhooks
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Media Cluster.LiveKitAPI: "Admin API Commands (REST)\n[MuteParticipant, UpdateMetadata]"
 Internal VPC.Media Cluster.LiveKitAPI -> Internal VPC.Backend Services.DjangoAPI: "Webhooks (POST /api/webhooks/)\n[participant_joined, room_finished]"
 
@@ -154,4 +170,5 @@ Internal VPC.Background Workers.PythonBot -> Internal VPC.Backend Services.Djang
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Background Workers.PythonBot: "JWT Room Token"
 
 Internal VPC.Background Workers.PythonBot -> Internal VPC.Media Cluster.LiveKitAPI: "2. Connect Signaling WS"
-Internal VPC.Background Workers.PythonBot <-> Internal VPC.Media Cluster.LiveKitRTC: "3. Stream Bot Audio (UDP/10ms frames)"
+Internal VPC.Background Workers.PythonBot -> Internal VPC.Media Cluster.LiveKitRTC: "3. Stream Bot Audio (UDP/10ms frames)"
+Internal VPC.Media Cluster.LiveKitRTC -> Internal VPC.Background Workers.PythonBot: "Receive Room Audio"
