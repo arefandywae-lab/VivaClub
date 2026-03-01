@@ -92,12 +92,12 @@ export default function BotsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900">Bot Management</h1>
                     <p className="text-slate-500 mt-1">Manage virtual participants in rooms for testing and content.</p>
                 </div>
-                <div className="bg-white px-4 py-2 rounded-lg border shadow-sm">
+                <div className="bg-white px-4 py-2 rounded-lg border shadow-sm self-start sm:self-auto">
                     <span className="text-sm font-medium text-slate-500">Active Bots:</span>
                     <span className="ml-2 text-xl font-bold text-emerald-600">{bots.length}</span>
                 </div>
@@ -112,8 +112,8 @@ export default function BotsPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex gap-3 items-end">
-                        <div className="flex-1">
+                    <div className="flex flex-col md:flex-row gap-3 md:items-end w-full">
+                        <div className="w-full md:flex-1">
                             <label className="text-sm font-medium text-slate-600 mb-1 block">Room ID</label>
                             <Input
                                 placeholder="Paste room UUID here..."
@@ -121,7 +121,7 @@ export default function BotsPage() {
                                 onChange={(e) => setSpawnRoomId(e.target.value)}
                             />
                         </div>
-                        <div className="w-48">
+                        <div className="w-full md:w-48">
                             <label className="text-sm font-medium text-slate-600 mb-1 block">Bot Name (optional)</label>
                             <Input
                                 placeholder="DJ Bot"
@@ -132,7 +132,7 @@ export default function BotsPage() {
                         <Button
                             onClick={handleSpawn}
                             disabled={spawning}
-                            className="bg-emerald-600 hover:bg-emerald-700 gap-2"
+                            className="bg-emerald-600 hover:bg-emerald-700 gap-2 w-full md:w-auto"
                         >
                             {spawning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
                             Spawn

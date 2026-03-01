@@ -1,8 +1,13 @@
-import { Home, Users, Settings, Activity, LogOut, Bot } from "lucide-react";
+import { Home, Users, Settings, Activity, LogOut, Bot, MonitorSmartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export function Sidebar() {
+interface SidebarProps {
+    isOpen?: boolean;
+    setIsOpen?: (v: boolean) => void;
+}
+
+export function Sidebar({ isOpen = false, setIsOpen }: SidebarProps) {
     const [profile, setProfile] = useState<any>(null);
 
     useEffect(() => {
@@ -13,34 +18,54 @@ export function Sidebar() {
     }, []);
 
     return (
-        <div className="flex h-screen w-64 flex-col border-r bg-slate-950 text-slate-300">
-            <div className="flex h-16 items-center border-b border-slate-800 px-6">
-                <Activity className="mr-2 h-6 w-6 text-emerald-500" />
-                <span className="font-bold text-lg text-white">Viva Dashboard</span>
+        <div className={`
+            fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r bg-slate-950 text-slate-300
+            transform transition-transform duration-300 ease-in-out
+            md:relative md:translate-x-0
+            ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        `}>
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-800 px-6">
+                <div className="flex items-center">
+                    <Activity className="mr-2 h-6 w-6 text-emerald-500" />
+                    <span className="font-bold text-lg text-white">Viva Dashboard</span>
+                </div>
+                {setIsOpen && (
+                    <button
+                        onClick={() => setIsOpen(false)}
+                        className="md:hidden p-1 text-slate-400 hover:text-white rounded-md"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                )}
             </div>
 
-            <nav className="flex-1 space-y-1 p-4">
-                <Link href="/" className="flex items-center rounded-lg bg-slate-900 px-4 py-3 text-emerald-400">
-                    <Home className="mr-3 h-5 w-5" />
+            <nav className="flex-1 space-y-1 p-4 overflow-y-auto overflow-x-hidden">
+                <Link onClick={() => setIsOpen?.(false)} href="/" className="flex items-center rounded-lg bg-slate-900 px-4 py-3 text-emerald-400">
+                    <Home className="mr-3 h-5 w-5 shrink-0" />
                     Live Rooms
                 </Link>
-                <Link href="/users" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
-                    <Users className="mr-3 h-5 w-5" />
+                <Link onClick={() => setIsOpen?.(false)} href="/users" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
+                    <Users className="mr-3 h-5 w-5 shrink-0" />
                     User Management
                 </Link>
-                <Link href="/bots" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
-                    <Bot className="mr-3 h-5 w-5" />
+                <Link onClick={() => setIsOpen?.(false)} href="/bots" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
+                    <Bot className="mr-3 h-5 w-5 shrink-0" />
                     Bot Management
                 </Link>
-                <Link href="/settings" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
-                    <Settings className="mr-3 h-5 w-5" />
+                <Link onClick={() => setIsOpen?.(false)} href="/kiosk" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
+                    <MonitorSmartphone className="mr-3 h-5 w-5 shrink-0" />
+                    Kiosk Management
+                </Link>
+                <Link onClick={() => setIsOpen?.(false)} href="/settings" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
+                    <Settings className="mr-3 h-5 w-5 shrink-0" />
                     Settings
                 </Link>
             </nav>
 
-            <div className="border-t border-slate-800 p-4">
+
+            <div className="shrink-0 border-t border-slate-800 p-4">
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                    <div className="h-8 w-8 shrink-0 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold overflow-hidden">
                         {profile?.ghost_profile?.avatar ? (
                             <img src={profile.ghost_profile.avatar} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -65,6 +90,6 @@ export function Sidebar() {
                     Sign Out
                 </button>
             </div>
-        </div>
+        </div >
     );
 }

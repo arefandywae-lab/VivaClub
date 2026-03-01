@@ -2,14 +2,24 @@
 
 import { useWebSocket } from "@/hooks/use-websocket";
 import { Badge } from "@/components/ui/badge";
-import { Wifi, WifiOff } from "lucide-react";
+import { Wifi, WifiOff, Menu } from "lucide-react";
 
-export function Header() {
+export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     const { isConnected } = useWebSocket();
 
     return (
-        <header className="flex h-16 items-center justify-between border-b bg-white px-6">
-            <h2 className="text-xl font-semibold text-slate-800">Overview</h2>
+        <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white px-4 md:px-6">
+            <div className="flex items-center gap-3">
+                {onMenuClick && (
+                    <button
+                        onClick={onMenuClick}
+                        className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-md"
+                    >
+                        <Menu className="h-5 w-5" />
+                    </button>
+                )}
+                <h2 className="text-xl font-semibold text-slate-800">Overview</h2>
+            </div>
 
             <div className="flex items-center gap-4">
                 {isConnected ? (
