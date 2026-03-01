@@ -41,13 +41,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         p.metadata?.contains('"host":true') == true;
   }
 
-  // Helper: check if a participant is a speaker (has publish permission)
+  // Helper: check if a participant is a speaker
+  // Uses metadata "speaker": true (set by server on invite) for cross-device sync
   bool _isSpeaker(Participant p) {
     if (_isParticipantHost(p)) return true; // Host is always a speaker
+    // Check metadata first — server sets this on invite, visible to all devices
+    if (p.metadata?.contains('"speaker": true') == true ||
+        p.metadata?.contains('"speaker":true') == true) {
+      return true;
+    }
+    // Fallback: check permissions (for local participant)
     if (p is LocalParticipant) {
       return p.permissions.canPublish == true;
     }
-    // Remote: has audio tracks published = they have canPublish
+    // Remote: has audio tracks = they can publish
     return p.audioTrackPublications.isNotEmpty;
   }
 

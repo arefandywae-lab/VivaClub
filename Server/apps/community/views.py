@@ -303,7 +303,7 @@ class RoomViewSet(viewsets.ModelViewSet):
             async def invite_speaker_async():
                 lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
                 try:
-                    # Correct usage: pass a single request object
+                    # Grant publish permission + update metadata to clear hand & mark as speaker
                     request_obj = api.UpdateParticipantRequest(
                         room=str(room.id),
                         identity=target_identity,
@@ -311,7 +311,11 @@ class RoomViewSet(viewsets.ModelViewSet):
                             can_subscribe=True,
                             can_publish=True,
                             can_publish_data=True,
-                        )
+                        ),
+                        metadata=json.dumps({
+                            'handRaised': False,
+                            'speaker': True,
+                        }),
                     )
                     
                     await lkapi.room.update_participant(request_obj)
