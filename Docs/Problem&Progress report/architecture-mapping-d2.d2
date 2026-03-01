@@ -1,0 +1,157 @@
+direction: right
+classes: {
+  client: {
+    stroke: "#333333"
+    fill: "#f9f9f9"
+    style: {
+      shadow: true
+      border-radius: 8
+    }
+  }
+  proxy: {
+    stroke: "#0066cc"
+    fill: "#e6f2ff"
+  }
+  backend: {
+    stroke: "#009933"
+    fill: "#e6ffe6"
+  }
+  media: {
+    stroke: "#cc0000"
+    fill: "#ffe6e6"
+  }
+  database: {
+    stroke: "#9900cc"
+    fill: "#f2e6ff"
+    shape: cylinder
+  }
+  bot: {
+    stroke: "#e6b800"
+    fill: "#fffbe6"
+  }
+}
+
+title: "VivaClub Infrastructure Details"
+description: "Detailed Component & Port Mapping"
+
+%% External Zone
+Public Internet: {
+  Flutter: "Flutter Mobile (Users)" {
+    class: client
+    shape: smartphone
+  }
+  AdminBrowser: "Next.js Admin UI" {
+    class: client
+    shape: browser
+  }
+}
+
+%% Gateway Zone
+Gateway: {
+  class: proxy
+  Caddy: "Caddy Reverse Proxy" {
+    tooltip: "Ports 80/443 (Auto SSL/TLS)"
+  }
+}
+
+%% Internal Network (VPS)
+Internal VPC: {
+  
+  %% Backend Layer
+  Backend Services: {
+    DjangoAPI: "Django API (Sync)" {
+      class: backend
+      tooltip: "REST Framework (Port: 8000)"
+    }
+    DaphneWS: "Daphne ASGI (Async)" {
+      class: backend
+      tooltip: "WebSockets (Port: 8000)"
+    }
+    NextJS: "Next.js Admin Server" {
+      class: backend
+      tooltip: "SSR UI (Port: 3000)"
+    }
+  }
+
+  %% Media Layer
+  Media Cluster: {
+    class: media
+    LiveKitAPI: "LiveKit API / Signaling" {
+      tooltip: "Port: 7880 (HTTP/WS)"
+    }
+    LiveKitRTC: "LiveKit RTC Engine" {
+      tooltip: "Port: 7882 (UDP/TCP)"
+    }
+  }
+
+  %% Data Layer
+  Data Storage: {
+    class: database
+    PostgreSQL: "PostgreSQL DB" {
+      tooltip: "Users, Rooms, Settings (Port: 5432)"
+    }
+    Redis: "Redis Broker" {
+      tooltip: "Channel Layers, Worker Queues (Port: 6379)"
+    }
+  }
+
+  %% Background Workers
+  Background Workers: {
+    PythonBot: "AI Companion Worker" {
+      class: bot
+      tooltip: "Listens to Redis for assignments"
+    }
+  }
+}
+
+%% --- COMMUNICATIONS ---
+
+%% Public Internet to Gateway
+Public Internet.Flutter -> Gateway.Caddy: "1. REST API Requests (HTTPS)\nPOST /api/community/*"
+Gateway.Caddy -> Public Internet.Flutter: "JSON Responses + JWT Tokens"
+
+Public Internet.Flutter -> Gateway.Caddy: "2. WSS Connections (HTTPS Upgrades)\n/ws/notifications/"
+Gateway.Caddy -> Public Internet.Flutter: "JSON Pusher (Event notifications)"
+
+Public Internet.Flutter -> Internal VPC.Media Cluster.LiveKitAPI: "3. Direct WSS Signaling (Port 7880)\n[Tokens, Room Joins, Mute state]"
+Internal VPC.Media Cluster.LiveKitAPI -> Public Internet.Flutter: "Events: RoomUpdates, ParticipantJoined"
+
+Public Internet.Flutter <-> Internal VPC.Media Cluster.LiveKitRTC: "4. Direct UDP Media (Port 7882)\n[Opus Audio Streams]"
+
+Public Internet.AdminBrowser -> Gateway.Caddy: "5. Browser Navigation (HTTPS)\nadmin.vivaclubs.site"
+
+%% Gateway Routing Rules
+Gateway.Caddy -> Internal VPC.Backend Services.DjangoAPI: "/api/* ➔ HTTP:8000\n[Forward API calls]"
+Internal VPC.Backend Services.DjangoAPI -> Gateway.Caddy: "200 OK / 401 Unauthorized"
+
+Gateway.Caddy -> Internal VPC.Backend Services.DaphneWS: "/ws/* ➔ HTTP:8000\n[WebSocket Handshake]"
+Gateway.Caddy -> Internal VPC.Backend Services.NextJS: "*.admin.* ➔ HTTP:3000"
+
+%% Internal Backend Logistics
+Internal VPC.Backend Services.NextJS -> Internal VPC.Backend Services.DjangoAPI: "Fetch Data / Admin Actions\nGET /api/auth/admin/*"
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Backend Services.NextJS: "Admin Statistics JSON"
+
+Internal VPC.Backend Services.DjangoAPI <-> Internal VPC.Data Storage.PostgreSQL: "Read/Write SQL Data" {
+  style.stroke: "#666"
+}
+Internal VPC.Backend Services.DaphneWS <-> Internal VPC.Data Storage.PostgreSQL: "Check Auth State" {
+  style.stroke: "#666"
+}
+
+%% Redis Queues / Pub-Sub
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.Redis: "1. Publish Channel Layer msg\n[Payload: new_follower, kick]"
+Internal VPC.Data Storage.Redis -> Internal VPC.Backend Services.DaphneWS: "2. Consume Channel Queue\n[Triggers WS Push to Client]"
+
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.Redis: "3. LPUSH Task Queue\n[Payload: bot_join_room_ID]"
+Internal VPC.Data Storage.Redis -> Internal VPC.Background Workers.PythonBot: "4. BLPOP Consume Task"
+
+%% API ↔ LiveKit Controller / Webhooks
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Media Cluster.LiveKitAPI: "Admin API Commands (REST)\n[MuteParticipant, UpdateMetadata]"
+Internal VPC.Media Cluster.LiveKitAPI -> Internal VPC.Backend Services.DjangoAPI: "Webhooks (POST /api/webhooks/)\n[participant_joined, room_finished]"
+
+%% Bot Lifecycle connections
+Internal VPC.Background Workers.PythonBot -> Internal VPC.Backend Services.DjangoAPI: "1. Request Bot Token\nGET /api/bot/token/"
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Background Workers.PythonBot: "JWT Room Token"
+
+Internal VPC.Background Workers.PythonBot -> Internal VPC.Media Cluster.LiveKitAPI: "2. Connect Signaling WS"
+Internal VPC.Background Workers.PythonBot <-> Internal VPC.Media Cluster.LiveKitRTC: "3. Stream Bot Audio (UDP/10ms frames)"
