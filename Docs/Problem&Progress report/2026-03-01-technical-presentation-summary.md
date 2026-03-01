@@ -144,3 +144,27 @@
 4.  **Right to be Forgotten (สิทธิในการถูกลืม):**
     *   เราออกแบบ API ให้รองรับ **"Soft Delete" และ "Hard Delete"**
     *   เมื่อผู้ใช้งานขอลบบัญชี ระบบจะตัดความสัมพันธ์ (Cascade Delete) ข้อมูลใน `ghost_profile`, เสียงอัด, และประวัติการคอมเมนต์ทิ้งทั้งหมดตามสิทธิ์ใน PDPA มาตรา 33 (Right to Erasure) ทันทีบนฐานข้อมูลหลัก
+
+---
+
+## 9. สถาปัตยกรรมระดับซอฟต์แวร์ (Software Architecture & State Management)
+
+**โครงสร้างระดับแอปพลิเคชัน (Frontend - Flutter):**
+เราออกแบบแอปพลิเคชันโดยยึดหลัก **Clean Architecture** แบ่งโครงสร้างโค้ดออกเป็น 3 เลเยอร์หลัก เพื่อให้โค้ดดูแลรักษาง่าย (Maintainable) และเขียนเทสต์ได้ง่าย (Testable):
+
+1.  **Presentation Layer (UI & State):** ประกอบด้วยหน้าจอ (Screens/Widgets) ทาง UI และ BLoC/Cubit สำหรับจัดการ State
+2.  **Domain Layer (Business Logic):** ตัวกำหนดโครงสร้างข้อมูล (Entities) และ Use Cases ต่างๆ (เช่น `JoinRoomUseCase`, `MuteMicrophoneUseCase`) เลเยอร์นี้จะไม่มีโค้ดที่ผูกกับ Flutter SDK เลย
+3.  **Data Layer (API & Local Storage):** จัดการเรื่องการยิง HTTP Request ไป Backend (Django), การต่อ WebSocket, หรือการจัดการฐานข้อมูลในเครื่อง (SQLite / SharedPreferences)
+
+**ทำไมถึงเลือกใช้ BLoC (Business Logic Component)?**
+แอปพลิเคชันประเภท Live Audio Room มีความซับซ้อนเรื่อง **"สถานะ (State)"** สูงมาก การใช้ `setState()` ทั่วไปหรือ Provider อาจจะเอาไม่อยู่ BLoC จึงเข้ามาแก้ปัญหาเหล่านี้:
+
+1.  **Separation of Concerns (การแยก UI ออกจาก Logic อย่างเด็ดขาด):**
+    *   BLoC บังคับให้เรามองทุกอย่างเป็น **Event (สิ่งที่ User ทำ) -> State (ผลลัพธ์ที่ UI ต้องแสดง)**
+    *   ตัวอย่าง: `MuteMicEvent` -> BLoC ประมวลผลคุยกับ LiveKit -> พ่น `RoomState(isMuted: true)` ออกมาให้ UI ทำปุ่มไมค์เป็นสีแดง
+2.  **จัดการ Async & Stream Operations ได้ดีเยี่ยม:**
+    *   แอปต้องรับข้อมูลแบบ Real-time (Stream) จาก **LiveKit WebRTC** ตลอดเวลา (เช่น ใครกำลังพูดอยู่ - Active Speakers, สถานะเน็ตเวิร์คหลุดเกิด Reconnecting) BLoC ทำงานบนพื้นฐานของ `Streams` จึงรองรับข้อมูลไหลเข้าออกแบบต่อเนื่องได้เสถียรมาก
+3.  **Predictability (คาดเดาสถานะได้ 100%):**
+    *   ทุกครั้งที่ห้อง Live มีการอัปเดต เช่น มีคนยกมือตามา (Hand Raised) หรือมีคนใหม่เดินเข้าห้อง BLoC จะพ่น State ใหม่ทับ State เดิมเสมอ ทำให้เรามั่นใจว่าถ้า State เป็นหน้าตาแบบนี้ UI ทุกจุดในแอป (เช่น ไอคอนยกมือ, รูปโปรไฟล์มุมจอ) จะต้องอัปเดตและแสดงผลตรงกันทั้งหมดโดยไม่มีบั๊ก UI ค้าง
+4.  **ป้องกัน Race Conditions:**
+    *   ในห้องเสียงคนอาจจะกดปุ่มแย่งไมค์พร้อมกัน หรือเน็ตกระตุก BLoC สามารถใช้ Event Transformers (เช่น `droppable`, `throttle`) เพื่อป้องกันไม่ให้แอปทำงานซ้ำซ้อนจนพังได้
