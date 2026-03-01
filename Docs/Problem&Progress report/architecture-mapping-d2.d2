@@ -33,6 +33,12 @@ classes: {
       fill: "#f2e6ff"
     }
   }
+  bot: {
+    style: {
+      stroke: "#e6b800"
+      fill: "#fffbe6"
+    }
+  }
 }
 
 title: "VivaClub Infrastructure Details"
@@ -106,6 +112,14 @@ Internal VPC: {
       tooltip: "Channel Layers, Worker Queues (Port: 6379)"
     }
   }
+
+  # Background Workers
+  Background Workers: {
+    PythonBot: "Music Bot Worker" {
+      class: bot
+      tooltip: "Listens to Redis for assignments to play audio/music"
+    }
+  }
 }
 
 # === COMMUNICATIONS ===
@@ -171,13 +185,36 @@ Internal VPC.Data Storage.PostgreSQL -> Internal VPC.Backend Services.DaphneWS: 
 }
 
 # Redis Queues / Pub-Sub
-Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.Redis: "Publish Channel msg" {
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.Redis: "1. Publish Channel msg\n[Payload: kick]" {
   style.stroke: "#ff6600"
 }
-Internal VPC.Data Storage.Redis -> Internal VPC.Backend Services.DaphneWS: "Consume Channel Queue\n[Triggers WS Push]" {
+Internal VPC.Data Storage.Redis -> Internal VPC.Backend Services.DaphneWS: "2. Consume Channel Queue\n[Triggers WS Push]" {
+  style.stroke: "#ff6600"
+}
+
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.Redis: "3. LPUSH Task Queue\n[bot_join_room_ID]" {
+  style.stroke: "#ff6600"
+}
+Internal VPC.Data Storage.Redis -> Internal VPC.Background Workers.PythonBot: "4. BLPOP Consume Task" {
   style.stroke: "#ff6600"
 }
 
 # API <-> LiveKit Controller / Webhooks
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Media Cluster.LiveKitAPI: "Admin API Commands\n[MuteParticipant]"
 Internal VPC.Media Cluster.LiveKitAPI -> Internal VPC.Backend Services.DjangoAPI: "Webhooks\n(POST /api/webhooks/)"
+
+# Bot Lifecycle connections
+Internal VPC.Background Workers.PythonBot -> Internal VPC.Backend Services.DjangoAPI: "1. Request Bot Token"
+Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Background Workers.PythonBot: "JWT Room Token"
+
+Internal VPC.Background Workers.PythonBot -> Internal VPC.Media Cluster.LiveKitAPI: "2. Connect Signaling WS" {
+  style.stroke: "#e6b800"
+}
+Internal VPC.Background Workers.PythonBot -> Internal VPC.Media Cluster.LiveKitRTC: "3. Stream Music/Audio\n(UDP/10ms frames)" {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
+Internal VPC.Media Cluster.LiveKitRTC -> Internal VPC.Background Workers.PythonBot: "Receive Room Audio" {
+  style.stroke-dash: 5
+  style.stroke: "#cc0000"
+}
