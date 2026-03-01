@@ -1,14 +1,20 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/emoji_utils.dart';
 import 'package:viva_club/features/community/presentation/bloc/room_bloc.dart';
 import 'package:viva_club/features/community/data/livekit_room_service.dart';
 import 'package:viva_club/features/community/data/community_repository.dart';
+import 'package:viva_club/features/community/data/following_repository.dart';
+import 'package:viva_club/features/community/presentation/bloc/following_bloc.dart';
+import 'package:viva_club/core/network/dio_client.dart';
+import '../widgets/follow_button.dart';
 
 class LiveRoomScreen extends StatefulWidget {
   final String token;
@@ -777,6 +783,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   ) {
     final isLocal = p is LocalParticipant;
 
+    String? ghostId;
+    if (p.metadata != null) {
+      try {
+        final Map<String, dynamic> meta = jsonDecode(p.metadata!);
+        ghostId = meta['ghost_id'];
+      } catch (_) {}
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -864,18 +878,16 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Follow button
-                    _buildCardButton(
-                      icon: Icons.person_add_rounded,
-                      label: 'Follow',
-                      color: AppTheme.skyBlue,
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Followed ${p.name}')),
-                        );
-                      },
-                    ),
-                    SizedBox(width: 12.w),
+                    if (ghostId != null)
+                      BlocProvider(
+                        create: (_) =>
+                            FollowingBloc(FollowingRepository(DioClient())),
+                        child: FollowButton(
+                          ghostId: ghostId,
+                          ghostName: EmojiUtils.getNameWithoutTag(p.name),
+                        ),
+                      ),
+                    if (ghostId != null) SizedBox(width: 12.w),
                     // Report button
                     _buildCardButton(
                       icon: Icons.flag_rounded,

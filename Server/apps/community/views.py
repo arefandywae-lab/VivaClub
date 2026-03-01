@@ -219,8 +219,12 @@ class RoomViewSet(viewsets.ModelViewSet):
             can_update_own_metadata=True, # Allow hand-raise
         )
 
-        # Metadata: include role and host flag
-        metadata = json.dumps({'role': request.user.role, 'host': is_host})
+        # Metadata: include role, host flag, and ghost_id for follow feature
+        metadata = json.dumps({
+            'role': request.user.role, 
+            'host': is_host,
+            'ghost_id': str(user_profile.id)
+        })
 
         token = api.AccessToken(api_key, api_secret) \
             .with_identity(identity) \
@@ -293,6 +297,17 @@ class RoomViewSet(viewsets.ModelViewSet):
             async def invite_speaker_async():
                 lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
                 try:
+                    # Rebuild metadata from database to preserve role and ghost_id
+                    from .models import GhostProfile
+                    meta = {'handRaised': False, 'speaker': True}
+                    try:
+                        target_ghost = GhostProfile.objects.select_related('user').get(user_id=target_identity)
+                        meta['role'] = target_ghost.user.role
+                        meta['host'] = False  # The host wouldn't be invited
+                        meta['ghost_id'] = str(target_ghost.id)
+                    except GhostProfile.DoesNotExist:
+                        pass
+
                     # Grant publish permission + update metadata to clear hand & mark as speaker
                     request_obj = api.UpdateParticipantRequest(
                         room=str(room.id),
@@ -302,10 +317,7 @@ class RoomViewSet(viewsets.ModelViewSet):
                             can_publish=True,
                             can_publish_data=True,
                         ),
-                        metadata=json.dumps({
-                            'handRaised': False,
-                            'speaker': True,
-                        }),
+                        metadata=json.dumps(meta),
                     )
                     
                     await lkapi.room.update_participant(request_obj)
