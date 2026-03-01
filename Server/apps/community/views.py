@@ -823,7 +823,8 @@ class LiveKitWebhookView(APIView):
             return Response({"error": "Server not configured for webhooks"}, status=500)
 
         try:
-            receiver = api.WebhookReceiver(api_key, api_secret)
+            token_verifier = api.TokenVerifier(api_key, api_secret)
+            receiver = api.WebhookReceiver(token_verifier)
             event = receiver.receive(request.body.decode('utf-8'), auth_header)
             
             event_type = event.event

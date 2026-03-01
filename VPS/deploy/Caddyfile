@@ -14,13 +14,15 @@ vivaclubs.site, www.vivaclubs.site {
         file_server
     }
 
-    # Bot Service API
+    # Bot Service API (must be handle_path BEFORE the catch-all handle below)
     handle_path /bot-api/* {
         reverse_proxy vivaclub_bot_service:9090
     }
 
-    # Proxy to Django Application (handles both HTTP and WebSocket)
-    reverse_proxy vivaclub_backend:8000
+    # Fallback: Proxy everything else to Django (HTTP + WebSocket)
+    handle {
+        reverse_proxy vivaclub_backend:8000
+    }
 }
 
 # 2. LiveKit Traffic
