@@ -60,3 +60,40 @@ class AdminUserActionView(APIView):
         else:
             return Response({"error": "Invalid action"}, status=400)
 
+
+class AdminCleanupTestDataView(APIView):
+    """Delete all test rooms and test users created by stress tests"""
+    permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
+
+    def post(self, request):
+        from apps.community.models import Room, GhostProfile
+        from django.db.models import Q
+
+        # Delete test rooms (title starts with "Test Room #" or "Test Anxiety" or "test")
+        test_rooms = Room.objects.filter(
+            Q(title__startswith='Test Room #') |
+            Q(title__startswith='Test Anxiety') |
+            Q(title='test')
+        )
+        rooms_count = test_rooms.count()
+        test_rooms.delete()
+
+        # Delete test users (username starts with "clubhouse_user_")
+        test_users = User.objects.filter(username__startswith='clubhouse_user_')
+        users_count = test_users.count()
+
+        # Delete their ghost profiles first
+        ghost_profiles = GhostProfile.objects.filter(user__in=test_users)
+        ghosts_count = ghost_profiles.count()
+        ghost_profiles.delete()
+
+        test_users.delete()
+
+        return Response({
+            "message": "Test data cleaned up successfully",
+            "deleted_rooms": rooms_count,
+            "deleted_users": users_count,
+            "deleted_ghost_profiles": ghosts_count,
+        })
+
+
