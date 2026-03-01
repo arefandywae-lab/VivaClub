@@ -10,6 +10,7 @@ class LiveKitRoomService extends ChangeNotifier {
   String? _currentTitle;
   bool _isHost = false;
   bool _isConnecting = false;
+  bool _wasKicked = false;
   List<Participant> _participants = [];
 
   LiveKitRoomService({required this.communityRepository});
@@ -19,6 +20,7 @@ class LiveKitRoomService extends ChangeNotifier {
   String? get currentTitle => _currentTitle;
   bool get isHost => _isHost;
   bool get isConnecting => _isConnecting;
+  bool get wasKicked => _wasKicked;
   List<Participant> get participants => _participants;
   bool get isMuted {
     final p = _room?.localParticipant;
@@ -64,6 +66,21 @@ class LiveKitRoomService extends ChangeNotifier {
       _activeRoomId = roomId;
       _isHost = isHost;
       _isConnecting = false;
+      _wasKicked = false;
+
+      // Listen for disconnection (kicked by host)
+      _room!.events.listen((event) {
+        if (event is RoomDisconnectedEvent) {
+          debugPrint('Room disconnected — likely kicked');
+          _wasKicked = true;
+          _activeRoomId = null;
+          _currentTitle = null;
+          _isHost = false;
+          _participants = [];
+          _room = null;
+          notifyListeners();
+        }
+      });
 
       // Everyone starts muted — user manually toggles mic via the mic button
 
@@ -120,6 +137,7 @@ class LiveKitRoomService extends ChangeNotifier {
     _activeRoomId = null;
     _currentTitle = null;
     _isHost = false;
+    _wasKicked = false;
     _participants = [];
 
     final roomToDispose = _room;

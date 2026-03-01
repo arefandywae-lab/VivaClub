@@ -132,6 +132,25 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   Widget build(BuildContext context) {
     return Consumer<LiveKitRoomService>(
       builder: (context, service, child) {
+        // Auto-navigate back when kicked
+        if (service.wasKicked) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('You were removed from the room')),
+              );
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/dashboard');
+              }
+            }
+          });
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
         final participants = service.participants;
         final isMuted = service.isMuted;
 
