@@ -34,6 +34,23 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   bool _isLeaving = false;
   bool _isDragging = false; // Show zone borders when dragging
 
+  // Helper: check if a participant is the room host
+  bool _isParticipantHost(Participant p) {
+    if (p is LocalParticipant) return widget.isHost;
+    return p.metadata?.contains('"host": true') == true ||
+        p.metadata?.contains('"host":true') == true;
+  }
+
+  // Helper: check if a participant is a speaker (has publish permission)
+  bool _isSpeaker(Participant p) {
+    if (_isParticipantHost(p)) return true; // Host is always a speaker
+    if (p is LocalParticipant) {
+      return p.permissions.canPublish == true;
+    }
+    // Remote: has audio tracks published = they have canPublish
+    return p.audioTrackPublications.isNotEmpty;
+  }
+
   // Avatar accent colors
   static const List<List<Color>> _avatarColors = [
     [Color(0xFFF3E8FF), Color(0xFF9333EA)],
@@ -111,13 +128,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         final participants = service.participants;
         final isMuted = service.isMuted;
 
-        // Speakers = anyone with audio published or local participant if host
-        final speakers = participants.where((p) {
-          if (p is LocalParticipant) {
-            return widget.isHost || p.audioTrackPublications.isNotEmpty;
-          }
-          return p.audioTrackPublications.isNotEmpty;
-        }).toList();
+        // Speakers = host + anyone with canPublish/audio tracks
+        final speakers = participants.where(_isSpeaker).toList();
+        // Sort: host always first
+        speakers.sort((a, b) {
+          final aHost = _isParticipantHost(a) ? 0 : 1;
+          final bHost = _isParticipantHost(b) ? 0 : 1;
+          return aHost.compareTo(bHost);
+        });
 
         final listeners = participants
             .where((p) => !speakers.contains(p))
@@ -337,11 +355,16 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         },
         onAcceptWithDetails: (details) {
           final p = details.data;
-          // Invite listener to speak
+          // Invite listener to speak — grants canPublish permission
           service.inviteSpeaker(p.identity);
+          // Auto-enable mic for the invited user (they'll appear as speaker)
+          if (p.audioTrackPublications.isNotEmpty) {
+            final trackSid = p.audioTrackPublications.first.sid;
+            service.muteParticipant(p.identity, trackSid, false);
+          }
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Invited ${p.name} to speak')));
+          ).showSnackBar(SnackBar(content: Text('${p.name} invited to speak')));
         },
         builder: (context, candidateData, rejectedData) {
           final isHovering = candidateData.isNotEmpty;
@@ -633,6 +656,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                   style: TextStyle(fontSize: isSpeaker ? 30.sp : 22.sp),
                 ),
               ),
+              // Host crown indicator
+              if (_isParticipantHost(p))
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    width: 24.w,
+                    height: 24.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.butteryYellow,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Center(
+                      child: Text('👑', style: TextStyle(fontSize: 11.sp)),
+                    ),
+                  ),
+                ),
               // Hand raise indicator
               if (Provider.of<LiveKitRoomService>(
                 context,

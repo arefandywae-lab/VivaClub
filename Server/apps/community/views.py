@@ -218,9 +218,9 @@ class RoomViewSet(viewsets.ModelViewSet):
             can_update_own_metadata=True, # Allow hand-raise
         )
 
-        # Metadata: {"role": "doctor"} or {"role": "patient"}
+        # Metadata: include role and host flag
         import json
-        metadata = json.dumps({'role': request.user.role})
+        metadata = json.dumps({'role': request.user.role, 'host': is_host})
 
         token = api.AccessToken(api_key, api_secret) \
             .with_identity(identity) \
