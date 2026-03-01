@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions, decorators, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+import json
 from django.shortcuts import get_object_or_404
 from .models import GhostProfile, GhostSubscription, Room, Notification, FCMToken, UserTrustScore, RoomReport, BlockedUser
 from .serializers import (
@@ -219,7 +220,6 @@ class RoomViewSet(viewsets.ModelViewSet):
         )
 
         # Metadata: include role and host flag
-        import json
         metadata = json.dumps({'role': request.user.role, 'host': is_host})
 
         token = api.AccessToken(api_key, api_secret) \
@@ -229,14 +229,12 @@ class RoomViewSet(viewsets.ModelViewSet):
             .with_metadata(metadata) \
             .to_jwt()
 
-        # Update room occupant tracking (atomic to prevent race conditions)
+        # Update room last_active_at (listener count is tracked by LiveKit webhooks)
         from django.utils import timezone
-        from django.db.models import F
         from django.db import transaction
         
         with transaction.atomic():
             Room.objects.filter(id=room.id).update(
-                listeners_count=F('listeners_count') + 1,
                 last_active_at=timezone.now()
             )
             room.refresh_from_db()  # Get updated values
@@ -254,22 +252,14 @@ class RoomViewSet(viewsets.ModelViewSet):
         room = self.get_object()
         from django.utils import timezone
         
-        # Decrement count (atomic to prevent race conditions)
-        from django.db.models import F, Q
+        # Listener count is tracked by LiveKit webhooks (participant_left)
+        # Just update last_active_at here
         from django.db import transaction
         
         with transaction.atomic():
-            # Use F() expression with conditional to prevent going below 0
             Room.objects.filter(id=room.id).update(
-                listeners_count=F('listeners_count') - 1,
                 last_active_at=timezone.now()
             )
-            room.refresh_from_db()
-            
-            # Ensure count doesn't go below 0
-            if room.listeners_count < 0:
-                room.listeners_count = 0
-                room.save()
         return Response({"message": "Left room"})
         
     @decorators.action(detail=True, methods=['post'], url_path='invite')
