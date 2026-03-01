@@ -44,7 +44,7 @@ classes: {
 title: "VivaClub Infrastructure Details"
 description: "Detailed Component & Port Mapping"
 
-%% External Zone
+# External Zone
 Public Internet: {
   Flutter: "Flutter Mobile (Users)" {
     class: client
@@ -54,7 +54,7 @@ Public Internet: {
   }
 }
 
-%% Gateway Zone
+# Gateway Zone
 Gateway: {
   class: proxy
   Caddy: "Caddy Reverse Proxy" {
@@ -62,9 +62,9 @@ Gateway: {
   }
 }
 
-%% Internal Network (VPS)
+# Internal Network (VPS)
 Internal VPC: {
-  %% Backend Layer
+  # Backend Layer
   Backend Services: {
     DjangoAPI: "Django API (Sync)" {
       class: backend
@@ -80,7 +80,7 @@ Internal VPC: {
     }
   }
 
-  %% Media Layer
+  # Media Layer
   Media Cluster: {
     class: media
     LiveKitAPI: "LiveKit API / Signaling" {
@@ -91,7 +91,7 @@ Internal VPC: {
     }
   }
 
-  %% Data Layer
+  # Data Layer
   Data Storage: {
     class: database
     PostgreSQL: "PostgreSQL DB" {
@@ -102,7 +102,7 @@ Internal VPC: {
     }
   }
 
-  %% Background Workers
+  # Background Workers
   Background Workers: {
     PythonBot: "AI Companion Worker" {
       class: bot
@@ -111,9 +111,9 @@ Internal VPC: {
   }
 }
 
-%% === COMMUNICATIONS ===
+# === COMMUNICATIONS ===
 
-%% Public Internet to Gateway
+# Public Internet to Gateway
 Public Internet.Flutter -> Gateway.Caddy: "1. REST API Requests (HTTPS)\nPOST /api/community/*"
 Gateway.Caddy -> Public Internet.Flutter: "JSON Responses + JWT Tokens"
 
@@ -129,14 +129,14 @@ Public Internet.Flutter <-> Internal VPC.Media Cluster.LiveKitRTC: "4. Direct UD
 
 Public Internet.AdminBrowser -> Gateway.Caddy: "5. Browser Navigation (HTTPS)\nadmin.vivaclubs.site"
 
-%% Gateway Routing Rules
+# Gateway Routing Rules
 Gateway.Caddy -> Internal VPC.Backend Services.DjangoAPI: "/api/* ➔ HTTP:8000\n[Forward API calls]"
 Internal VPC.Backend Services.DjangoAPI -> Gateway.Caddy: "200 OK / 401 Unauthorized"
 
 Gateway.Caddy -> Internal VPC.Backend Services.DaphneWS: "/ws/* ➔ HTTP:8000\n[WebSocket Handshake]"
 Gateway.Caddy -> Internal VPC.Backend Services.NextJS: "*.admin.* ➔ HTTP:3000"
 
-%% Internal Backend Logistics
+# Internal Backend Logistics
 Internal VPC.Backend Services.NextJS -> Internal VPC.Backend Services.DjangoAPI: "Fetch Data / Admin Actions\nGET /api/auth/admin/*"
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Backend Services.NextJS: "Admin Statistics JSON"
 
@@ -154,18 +154,18 @@ Internal VPC.Data Storage.PostgreSQL -> Internal VPC.Backend Services.DaphneWS: 
   style.stroke: "#666"
 }
 
-%% Redis Queues / Pub-Sub
+# Redis Queues / Pub-Sub
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.Redis: "1. Publish Channel Layer msg\n[Payload: new_follower, kick]"
 Internal VPC.Data Storage.Redis -> Internal VPC.Backend Services.DaphneWS: "2. Consume Channel Queue\n[Triggers WS Push to Client]"
 
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Data Storage.Redis: "3. LPUSH Task Queue\n[Payload: bot_join_room_ID]"
 Internal VPC.Data Storage.Redis -> Internal VPC.Background Workers.PythonBot: "4. BLPOP Consume Task"
 
-%% API <-> LiveKit Controller / Webhooks
+# API <-> LiveKit Controller / Webhooks
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Media Cluster.LiveKitAPI: "Admin API Commands (REST)\n[MuteParticipant, UpdateMetadata]"
 Internal VPC.Media Cluster.LiveKitAPI -> Internal VPC.Backend Services.DjangoAPI: "Webhooks (POST /api/webhooks/)\n[participant_joined, room_finished]"
 
-%% Bot Lifecycle connections
+# Bot Lifecycle connections
 Internal VPC.Background Workers.PythonBot -> Internal VPC.Backend Services.DjangoAPI: "1. Request Bot Token\nGET /api/bot/token/"
 Internal VPC.Backend Services.DjangoAPI -> Internal VPC.Background Workers.PythonBot: "JWT Room Token"
 
