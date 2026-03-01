@@ -4,69 +4,65 @@
 
 ---
 
-## 1. ทำไมถึงเลือกใช้ Tools เหล่านี้? (Technology Stack Justification)
+## 1. External & Gateway (หน้าด่านและการรักษาความปลอดภัย)
 
-การเลือกเทคโนโลยีในโปรเจกต์นี้ มุ่งเน้นไปที่ **"ความสามารถในการขยายตัว (Scalability)"** และ **"การรองรับการทำงานแบบ Real-time"**
+ส่วนนี้คือปราการด่านแรกที่รับ Traffic จากโลกภายนอก (Public Internet)
 
-*   **📱 Frontend (Flutter):** 
-    *   **เหตุผล:** เป็น Cross-platform ที่รองรับการทำแอปมือถือทั้ง iOS และ Android จาก Codebase เดียว และมี Library ที่รองรับ WebRTC (LiveKit) ได้อย่างมีประสิทธิภาพระดับ Native ทำให้การจัดการเสียง (Audio Stream) ทำได้เสถียร
-*   **⚙️ Backend (Django + Django Channels / Daphne):**
-    *   **เหตุผล:** Django มีระบบ ORM และ Admin ที่แข็งแกร่งช่วยให้สร้าง API พื้นฐานได้เร็ว ส่วน **Django Channels** เข้ามาช่วยรับมือกับ WebSockets (Async) เพื่อทำ Real-time Notification ส่งแจ้งเตือนเวลามีคนกดติดตาม หรือเข้าห้อง
-    *   นอกจากนี้ Python ยังมีไลบรารีจัดการ Audio/Media สตรีมมิ่งที่แข็งแกร่ง ทำให้ง่ายต่อการเขียน **Music Bot / Testing Bot** เพื่อสตรีมเพลงเข้าห้อง
-*   **📡 Message Broker & Queue (Redis):**
-    *   **เหตุผล:** ใช้ทำ Pub/Sub เพื่อเป็นคนกลางกระจายข้อความ (Broadcast) ระหว่าง WebSockets หลายๆ Connection และใช้เป็นคิว (Task Queue) สำหรับสั่งงาน Background Worker (เช่น โยนงานไปให้ Music Bot เข้าห้องเป้าหมาย)
-*   **🗄️ Database (PostgreSQL):**
-    *   **เหตุผล:** เป็น Relational Database ที่มีความเสถียร (ACID Compliance) เหมาะสำหรับการเก็บข้อมูลที่มีความสัมพันธ์กันซับซ้อน เช่น User, Room, Session และ Metadata ต่างๆ
-*   **💻 Admin Dashboard (Next.js):**
-    *   **เหตุผล:** ใช้สร้าง UI สำหรับผู้ดูแลระบบได้รวดเร็ว (React/Tailwind) รองรับ SSR/CSR และไม่ต้องเอาไปรวมกับ Django Backend ทำให้แยกโหลดการทำงาน (Decoupling) หน้าบ้านและหลังบ้านได้ชัดเจน
+*   **Caddy Server (Reverse Proxy):** เราเลือกใช้ Caddy แทน Nginx เพราะความสามารถในการจัดการ Automatic HTTPS (Let's Encrypt) ที่เสถียรและบรรทัดคำสั่ง (Caddyfile) ตั้งค่าได้ง่ายมาก
+    *   **Path-based Routing:** Caddy จะดู URL ที่เรียกเข้ามา เช่น ถ้าขึ้นต้นด้วย `/api/*` มันจะส่งต่อไปที่ Django ทันที แต่ถ้าเป็น `/ws/*` มันจะทำการ Upgrade Connection เป็น WebSocket เพื่อส่งให้พลังของ Daphne
+    *   **Security Layer:** ทำหน้าที่เป็นตัวกลางบังหน้า (Hide Backend Infrastructure) ทำให้ Hacker ไม่รู้ว่า Server จริงๆ (Container IP) ของเราอยู่ที่ไหน
+*   **Clients:** 
+    *   **Flutter (Mobile App):** คุยผ่าน REST API สำหรับ Auth/Data ทั่วไป และใช้ WebRTC (UDP) สำหรับการสตรีมเสียง
+    *   **Next.js (Admin Dashboard):** เข้าถึงผ่าน Subdomain แยกต่างหากเพื่อกัน Traffic ของ Admin ออกจาก User ทั่วไป
 
 ---
 
-## 2. ทำไมถึงใช้ LiveKit? (Audio/Video Infrastructure)
+## 2. Internal VPS: Backend Layer (หัวใจการประมวลผล)
 
-ระบบของเราคือ Audio Drop-in Application ถ้าเราเขียน WebRTC ขึ้นมาเองแบบ Peer-to-Peer (Mesh) โทรศัพท์มือถือ 1 เครื่องจะต้องส่งเสียงหาคน 10 คนพร้อมกัน (Bandwidth มือถือจะรับไม่ไหว และแบตเตอรี่จะหมดไวมาก)
+เราใช้สถาปัตยกรรมแบบ Hybrid Backend ภายในวง Network (Docker Compose) ของเราเอง เพื่อรองรับงานคนละประเภท:
 
-*   **LiveKit คืออะไร?:** เป็น Open-source WebRTC Infrastructure ระดับโลก ที่ทำงานแบบ **SFU (Selective Forwarding Unit)**
-*   **หลักการทำงาน:** มือถือของผู้พูด (Speaker) จะส่งแพ็กเก็ตเสียง (UDP) ขึ้นไปที่ Server ของ LiveKit เพียงแค่ **1 เส้น** เท่านั้น จากนั้น Server จะทำหน้าที่ "กระจาย (Forward)" เสียงนั้นไปให้คนฟัง (Listeners) อีกร้อยคนพันคนเอง ช่วยลดโหลดของแอปมือถือได้อย่างมหาศาล
-*   **มีใครใช้ LiveKit บ้าง (Industry Examples):**
-    *   **OpenAI:** ใช้ LiveKit เป็น Infrastructure เบื้องหลังสำหรับ **Realtime API** (ChatGPT Advanced Voice Mode ในบางโซลูชัน)
-    *   **Character.AI:** ใช้สำหรับระบบคุยสายสนทนากับ AI
-    *   **Meet, Inworld AI, และแอป Social คุยเสียงชั้นนำ:** นิยมนำไปปรับแต่งใช้เพื่อรองรับคนคุยพร้อมกันจำนวนมากแบบ Low Latency
+*   **Django REST Framework (DRF):** รับผิดชอบงานที่เป็น Synchronous หรือการประมวลผลแบบ "รอคำตอบ" เช่น การ Login, การสร้างห้อง, หรือการดึงข้อมูล Profile งานเหล่านี้เน้นความถูกต้องของข้อมูล (Data Integrity) และความปลอดภัยเป็นหลัก
+*   **Daphne (ASGI Server):** รับผิดชอบงานที่เป็น Asynchronous หรือการเชื่อมต่อที่ค้างไว้ (Long-lived connections) เช่น Notification, การแจ้งเตือน Real-time เมื่อมีคนกด Follow หรือแจ้งเตือนสถานะห้อง Live ว่าใครกดยกมือ
+*   **Next.js (SSR):** การรัน Next.js บน VPS ช่วยให้เราทำ Server-Side Rendering ได้ ซึ่งทำให้หน้า Admin โหลดข้อมูลสถิติที่ซับซ้อนจาก Database ได้รวดเร็วและปลอดภัยกว่าการดึงข้อมูลผ่านฝั่ง Browser (Client-side) โดยตรง
 
 ---
 
-## 3. ทำไมต้องเช่า VPS (Virtual Private Server) แทนที่จะใช้ Cloud PaaS ทั่วไป?
+## 3. Media Cluster: WebRTC Engine (ระบบเสียงความหน่วงต่ำ)
 
-ในตอนเริ่มทำโปรเจกต์ ผู้พัฒนาส่วนใหญ่มักจะใช้ PaaS ฟรี หรือสำเร็จรูป (เช่น Vercel, Heroku, Render) แต่โครงสร้างระดับนี้ **"ทำไม่ได้"** เนื่องจากข้อจำกัดต่อไปนี้:
+นี่คือส่วนที่ยากที่สุดของแอปพลิเคชันเสียงแบบ Live Session ซึ่งเราแก้ปัญหาด้วย **LiveKit (Selective Forwarding Unit - SFU)**:
 
-1.  **ข้อจำกัดเรื่อง Port และ Protocol (หัวใจสำคัญ):** 
-    *   บริการ Cloud PaaS ส่วนใหญ่จะเปิดให้ใช้แค่ Port `80` (HTTP) และ `443` (HTTPS) 
-    *   แต่ **LiveKit ต้องการคุยผ่านโปรโตคอล UDP (Port 7882)** เพื่อให้เสียงมีความหน่วงต่ำที่สุด (Ultra-low Latency) การคุยผ่าน TCP/HTTP จะทำให้เสียงดีเลย์ หากใช้ PaaS เราจะไม่สามารถเจาะพอร์ต UDP หรือ Custom Ports แบบนี้ได้เลย
-2.  **สถาปัตยกรรมแบบ Multi-Container (Microservices):**
-    *   โปรเจกต์ประกอบด้วยคอนเทนเนอร์หลายตัวที่ต้องทำงานคุยกันในวง Network ภายใน (Backend, Frontend, Redis, Postgres, LiveKit, Bot Worker) การเช่า VPS (เช่น DigitalOcean, AWS EC2, หรือ Cloud ทั่วไปที่เป็นแบบ VM) ทำให้เราสร้างโครงสร้าง Docker Compose ภายใน Server เดียวกันได้อย่างอิสระ
-3.  **การรันงานแบบ Background Process:**
-    *   PaaS บางที่มี Time-out (ตัวอย่างเช่น ตัดจบ Request ภายใน 30 วินาที) แต่ **Music Bot / โฮสต์ทดสอบ** ของเราต้องเปิด Connection WebRTC ค้างไว้เพื่อสตรีมเพลงต่อเนื่องหลายชั่วโมง (Long-lived connections + WebSockets) VPS จึงตอบโจทย์กว่า
-4.  **ความคุ้มค่า (Predictable Cost):** 
-    *   การประมวลผล WebRTC และการทำ Audio Streaming ใช้ Bandwidth ค่อนข้างเยอะ การใช้ VPS แบบเหมาจ่ายต่อเดือนจึงประหยัดและคุมงบประมาณได้ชัวร์กว่าแบบ Pay-per-use
+*   **Signaling (Control Plane):** ใช้โปรโตคอล HTTP/WebSocket (Port 7880) เพื่อคุยเรื่อง "การจองคิวส่งเสียง", "สถานะการเปิดไมค์", และการสร้าง Room โทเคน เปรียบเสมือนโอเปอเรเตอร์ที่คอยบอกว่าใครจะได้พูดหรือฟังตอนไหน
+*   **RTC Engine (Data Plane):** ใช้โปรโตคอล UDP (Port 7882) ซึ่งเป็นหัวใจสำคัญของ Voice App 
+    *   *ทำไมต้อง UDP?* เพราะเสียงต้องการความเร็วสูงที่สุด (Real-time) หากคลื่นข้อมูลบางส่วนหายไป (Packet Loss) เราจะข้ามเฟรมนั้นไปเลย ไม่มีการรอให้ส่งใหม่เหมือน TCP ทำให้เสียงไม่ดีเลย์และไม่กระตุกเป็นช่วงๆ (Low Latency)
 
 ---
 
-## 4. อธิบาย Port Mapping เบื้องต้น (ประตูต้อนรับของระบบ)
+## 4. Data Storage & Workers (การจัดการข้อมูลและงานเบื้องหลัง)
 
-เพื่อให้ Traffic เข้าสู่ Service ที่ถูกต้องตามหน้าที่ใน VPS เราใช้ **Caddy Proxy** เป็นยามเฝ้าประตูด้านหน้า และจัดการ Map Ports ดังนี้:
+ส่วนนี้คือคลังข้อมูลและส่วนประมวลผลหลังบ้าน (Background Jobs):
 
-*   **🌐 [Port 80 / 443] Gateway (Caddy):**
-    *   เปิดรับ Request จริงจากคนข้างนอก และทำ Auto-SSL (HTTPS) จากนั้นจะส่ง Traffic วิ่งไปหา Service ข้างในตาม Path ที่กำหนด (Reverse Lookup)
-*   **🛠️ [Port 8000] Django API & Daphne:** 
-    *   ซ่อนอยู่หลัง Caddy รับข้อมูลที่เป็น HTTP API ปกติ (`/api/*`) และ WebSockets Connection (`/ws/*`)
-*   **📊 [Port 3000] Next.js Dashboard:** 
-    *   หน้าจอผู้ดูแลระบบ ทำงานเป็น Internal UI
-*   **📡 [Port 7880] LiveKit Signaling (TCP/WS):** 
-    *   เอาไว้จัดการจองห้อง (Room Handshake), เช็คสิทธิ์ (Token Auth) และควบคุมห้องด้วย WebSockets
-*   **🎧 [Port 7882] LiveKit Media (UDP/TCP):** 
-    *   **พอร์ตพิเศษสำหรับ WebRTC Audio Stream** มือถือของผู้ใช้จะส่งคลื่นเสียงอัดผ่านโปรโตคอล UDP วิ่งเข้าพอร์ตนี้โดยตรง เพื่อหลีกเลี่ยง Overhead ของ HTTP ทำให้ส่งเสียงได้ Real-time ระดับหลักมิลลิวินาที 
-*   **🔒 [Port 5432 & 6379] Postgres & Redis (Internal Only):** 
-    *   **ไม่เปิดสู่โลกภายนอก (No Port Forwarding)** เพราะเป็นความลับระดับฐานข้อมูล ให้เฉพาะคอนเทนเนอร์ด้วยกันเองเท่านั้นที่เชื่อมต่อได้
+*   **PostgreSQL:** เป็น Primary Source of Truth หรือฐานข้อมูลหลัก เก็บข้อมูลที่ "หายหรือพังไม่ได้" อย่างเด็ดขาด เช่น ข้อมูล User, ประวัติการเข้าห้อง, Transaction, หรือความสัมพันธ์ระหว่างเพื่อน (Followers)
+*   **Redis (The Swiss Army Knife):** ทำหน้าที่ 2 อย่างหลักๆ คือ:
+    1.  **Channel Layer:** เป็นตัวกลางให้ Django ส่งข้อความหา Daphne เพื่อ Push ข้อมูลออกแบบ WebSockets ไปยังหน้าจอ User ได้พร้อมกัน
+    2.  **Task Queue:** เป็นคิวคำสั่งสำหรับส่งงานไปให้ Background Worker (เช่น ส่งคิวคำสั่ง "บอทเปิดเพลง รบกวนเข้าห้อง XYZ เดี๋ยวนี้")
+*   **Python Music/Testing Bot Worker:** เป็นโปรเซสแยกที่ทำงานแบบ Daemon ตลอดเวลา คอยฟังคำสั่งจากคิวของ Redis เมื่อได้รับคำสั่ง มันจะสร้าง Instance ของบอทขึ้นมา แล้วเชื่อมต่อเข้า LiveKit โดยตรงเหมือนเป็น User คนหนึ่ง เพื่อทำการเปิดเพลงสตรีมใส่ห้อง (ไว้ทดสอบระบบเสียง)
+
+---
+
+## 📡 สรุป Port Mapping (พอร์ตเชื่อมต่อสำหรับ Network Engineer)
+
+เพื่อให้ผู้ฟังหรือวิศวกรคนอื่นเห็นภาพว่าระบบเราคุยกันผ่านช่องทางไหน หรือ Service ใดผูกกับพอร์ตไหนบ้าง:
+
+| Service | Port | Protocol | Exposure | การใช้งาน (Usage) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Caddy Gateway** | 80, 443 | TCP | **Public** | รับ Traffic เว็บและ API หน้าด่านทั้งหมด (HTTPS) |
+| **Django API / Daphne** | 8000 | TCP | Internal | จัดการ Backend Logic โดยรับ Traffic ส่งต่อมาจาก Caddy |
+| **Next.js Dashboard** | 3000 | TCP | Internal | จัดการหน้า Admin UI โดยรับ Traffic ส่งต่อมาจาก Caddy |
+| **LiveKit API** | 7880 | TCP / WS | **Public** | จัดการ Signaling ควบคุมเหตุการณ์ในห้องเสียง (Client ต่อตรง) |
+| **LiveKit RTC** | 7881-7882 | UDP / TCP | **Public** | ส่งผ่านข้อมูลเสียง WebRTC (บังคับเปิด UDP Port) |
+| **PostgreSQL** | 5432 | TCP | Private | ฐานข้อมูลหลัก (เครือข่ายคุยได้ภายในกันเองเท่านั้น) |
+| **Redis** | 6379 | TCP | Private | ระบบคิวและแจ้งเตือน Channels (ภายในเท่านั้น) |
+
 
 ---
 
