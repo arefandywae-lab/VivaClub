@@ -13,28 +13,8 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Simple Logo or Icon
-            Container(
-              width: 100.w,
-              height: 100.w,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  '🦅', // Hawk Emoji as placeholder logo
-                  style: TextStyle(fontSize: 48.sp),
-                ),
-              ),
-            ),
+            // App Logo
+            Image.asset('assets/images/logo.png', width: 120.w, height: 120.w),
             SizedBox(height: 24.h),
             CircularProgressIndicator(color: AppTheme.skyBlue),
           ],
