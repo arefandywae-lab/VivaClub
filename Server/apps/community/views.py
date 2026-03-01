@@ -800,12 +800,16 @@ class LiveKitWebhookView(APIView):
     """
     Receives events from LiveKit Server and broadcasts them via Django Channels 
     to the Admin Dashboard (real-time updates).
+    Also syncs room state: closes rooms on room_finished, updates listener counts.
     """
     permission_classes = [permissions.AllowAny] # webhook validation handled inside
 
     def post(self, request):
         import os
+        import logging
         from livekit import api
+        
+        logger = logging.getLogger(__name__)
         
         # 1. Verify Webhook Signature
         auth_header = request.headers.get('Authorization')
@@ -820,30 +824,63 @@ class LiveKitWebhookView(APIView):
 
         try:
             receiver = api.WebhookReceiver(api_key, api_secret)
-            # LiveKit python SDK expects the raw body as bytes/string
             event = receiver.receive(request.body.decode('utf-8'), auth_header)
             
-            # 2. Process Event and Broadcast to Admin Dashboard
-            from channels.layers import get_channel_layer
-            from asgiref.sync import async_to_sync
+            event_type = event.event
+            room_name = event.room.name if event.room else None
             
-            channel_layer = get_channel_layer()
+            logger.info(f"LiveKit Webhook: {event_type} | room={room_name}")
             
+            # 2. Sync Room State in Django
+            if room_name:
+                from django.utils import timezone
+                from django.db.models import F
+                
+                if event_type == 'room_finished':
+                    # LiveKit room closed (empty_timeout or manual) -> mark inactive
+                    updated = Room.objects.filter(id=room_name, is_active=True).update(
+                        is_active=False, 
+                        listeners_count=0
+                    )
+                    logger.info(f"room_finished: marked room {room_name} inactive (updated={updated})")
+                    
+                elif event_type == 'participant_joined':
+                    Room.objects.filter(id=room_name, is_active=True).update(
+                        listeners_count=F('listeners_count') + 1,
+                        last_active_at=timezone.now()
+                    )
+                    
+                elif event_type == 'participant_left':
+                    Room.objects.filter(id=room_name, is_active=True).update(
+                        listeners_count=F('listeners_count') - 1,
+                        last_active_at=timezone.now()
+                    )
+                    # Fix negative counts
+                    Room.objects.filter(id=room_name, listeners_count__lt=0).update(listeners_count=0)
+            
+            # 3. Broadcast to Admin Dashboard via WebSocket (non-critical)
             payload = {
-                "event": event.event,
+                "event": event_type,
                 "room_title": event.room.name if event.room else None,
-                "room_id": getattr(event.room, 'name', None), # Livekit room name usually mapped to our room ID
+                "room_id": room_name,
                 "participant_identity": event.participant.identity if event.participant else None,
                 "participant_name": event.participant.name if event.participant else None,
             }
             
-            async_to_sync(channel_layer.group_send)(
-                "admin_updates",
-                {
-                    "type": "admin_update",
-                    "payload": payload
-                }
-            )
+            try:
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+                
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    "admin_updates",
+                    {
+                        "type": "admin_update",
+                        "payload": payload
+                    }
+                )
+            except Exception as ws_err:
+                logger.warning(f"Failed to broadcast webhook event: {ws_err}")
             
             return Response({"success": True})
             
@@ -851,3 +888,4 @@ class LiveKitWebhookView(APIView):
             import traceback
             traceback.print_exc()
             return Response({"error": "Invalid webhook", "details": str(e)}, status=400)
+

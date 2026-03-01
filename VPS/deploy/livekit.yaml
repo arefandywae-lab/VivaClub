@@ -30,7 +30,11 @@ webhook:
     urls:
         - https://vivaclubs.site/api/community/webhook/livekit/
 
+room:
+    empty_timeout: 60  # seconds — auto-close room after 60s with no participants
+
 logging:
     json: false
     level: info
     pion_level: error
+

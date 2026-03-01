@@ -14,7 +14,7 @@ vivaclubs.site, www.vivaclubs.site {
         file_server
     }
 
-    # Proxy to Django Application
+    # Proxy to Django Application (handles both HTTP and WebSocket)
     reverse_proxy vivaclub_backend:8000
 }
 

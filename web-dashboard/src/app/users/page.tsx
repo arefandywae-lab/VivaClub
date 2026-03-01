@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api";
-import { formatDistanceToNow } from "date-fns";
-import { Shield, ShieldAlert, UserIcon } from "lucide-react";
+import { Shield, ShieldAlert, UserIcon, Ban, UserCheck, ChevronUp, ChevronDown } from "lucide-react";
 
 export default function UsersPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     useEffect(() => {
         fetchUsers();
@@ -18,12 +19,25 @@ export default function UsersPage() {
 
     const fetchUsers = async () => {
         try {
-            const data = await apiFetch("/auth/admin/users/"); // matches /api/auth/admin/users/
+            const data = await apiFetch("/auth/admin/users/");
             setUsers(data.results || data);
         } catch (error) {
             console.error("Failed to fetch users:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAction = async (userId: string, action: string, label: string) => {
+        if (!confirm(`Are you sure you want to ${label} this user?`)) return;
+        setActionLoading(`${userId}-${action}`);
+        try {
+            await apiFetch(`/auth/admin/users/${userId}/${action}/`, { method: "POST" });
+            await fetchUsers(); // Refresh list
+        } catch (error) {
+            alert(error instanceof Error ? error.message : `Failed to ${label} user`);
+        } finally {
+            setActionLoading(null);
         }
     };
 
@@ -62,7 +76,7 @@ export default function UsersPage() {
                             </TableHeader>
                             <TableBody>
                                 {users.map((user) => (
-                                    <TableRow key={user.id}>
+                                    <TableRow key={user.id} className={!user.is_active ? "opacity-50 bg-red-50/30" : ""}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center border overflow-hidden">
@@ -96,7 +110,11 @@ export default function UsersPage() {
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {user.is_online ? (
+                                            {!user.is_active ? (
+                                                <span className="flex items-center text-xs font-medium text-red-600">
+                                                    <span className="h-2 w-2 rounded-full bg-red-500 mr-2" /> Banned
+                                                </span>
+                                            ) : user.is_online ? (
                                                 <span className="flex items-center text-xs font-medium text-emerald-600">
                                                     <span className="h-2 w-2 rounded-full bg-emerald-500 mr-2" /> Online
                                                 </span>
@@ -107,7 +125,54 @@ export default function UsersPage() {
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Badge variant="outline" className="cursor-not-allowed opacity-50">Manage</Badge>
+                                            <div className="flex justify-end gap-1">
+                                                {user.is_active ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-red-600 hover:bg-red-50 border-red-200 gap-1"
+                                                        onClick={() => handleAction(user.id, "ban", "ban")}
+                                                        disabled={actionLoading === `${user.id}-ban`}
+                                                    >
+                                                        <Ban className="h-3 w-3" />
+                                                        Ban
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-emerald-600 hover:bg-emerald-50 border-emerald-200 gap-1"
+                                                        onClick={() => handleAction(user.id, "unban", "unban")}
+                                                        disabled={actionLoading === `${user.id}-unban`}
+                                                    >
+                                                        <UserCheck className="h-3 w-3" />
+                                                        Unban
+                                                    </Button>
+                                                )}
+                                                {user.is_staff ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-orange-600 hover:bg-orange-50 border-orange-200 gap-1"
+                                                        onClick={() => handleAction(user.id, "demote", "demote")}
+                                                        disabled={actionLoading === `${user.id}-demote`}
+                                                    >
+                                                        <ChevronDown className="h-3 w-3" />
+                                                        Demote
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-purple-600 hover:bg-purple-50 border-purple-200 gap-1"
+                                                        onClick={() => handleAction(user.id, "promote", "promote")}
+                                                        disabled={actionLoading === `${user.id}-promote`}
+                                                    >
+                                                        <ChevronUp className="h-3 w-3" />
+                                                        Promote
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
