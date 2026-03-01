@@ -192,15 +192,14 @@ class BotWorker:
 
     async def _stream_audio(self, url: str):
         """Stream audio from URL via yt-dlp piped through ffmpeg."""
+        import time
+
         try:
             # Determine if this is a YouTube URL or direct stream
             is_youtube = any(x in url for x in ['youtube.com', 'youtu.be'])
 
             if is_youtube:
-                # Pipe: yt-dlp → ffmpeg → raw PCM
                 logger.info(f"Bot {self.name}: extracting YouTube audio...")
-
-                # First get the audio URL with yt-dlp
                 ytdlp_proc = await asyncio.create_subprocess_exec(
                     "yt-dlp", "--get-url", "-f", "bestaudio/best",
                     "--no-warnings", "--no-playlist", url,
@@ -208,75 +207,68 @@ class BotWorker:
                     stderr=asyncio.subprocess.PIPE,
                 )
                 stdout, stderr = await ytdlp_proc.communicate()
-
                 if ytdlp_proc.returncode != 0:
-                    err_msg = stderr.decode().strip()
-                    logger.error(f"Bot {self.name}: yt-dlp failed: {err_msg}")
+                    logger.error(f"Bot {self.name}: yt-dlp failed: {stderr.decode().strip()}")
                     self.is_playing = False
                     return
-
                 audio_url = stdout.decode().strip().split('\n')[0]
-                logger.info(f"Bot {self.name}: got audio URL, starting ffmpeg decode...")
+                logger.info(f"Bot {self.name}: got audio URL, starting ffmpeg...")
             else:
                 audio_url = url
 
-            # FFmpeg decode to raw PCM (48kHz, mono, signed 16-bit LE)
+            # FFmpeg → raw PCM (48kHz mono s16le)
             self._ffmpeg_process = await asyncio.create_subprocess_exec(
                 "ffmpeg",
-                "-reconnect", "1",
-                "-reconnect_streamed", "1",
+                "-reconnect", "1", "-reconnect_streamed", "1",
                 "-reconnect_delay_max", "5",
                 "-i", audio_url,
-                "-f", "s16le",
-                "-ar", "48000",
-                "-ac", "1",
-                "-loglevel", "warning",
-                "pipe:1",
+                "-f", "s16le", "-ar", "48000", "-ac", "1",
+                "-loglevel", "warning", "pipe:1",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
 
             SAMPLE_RATE = 48000
-            NUM_CHANNELS = 1
-            # 20ms frames (960 samples at 48kHz) — standard WebRTC frame size
-            SAMPLES_PER_FRAME = 960
-            BYTES_PER_FRAME = SAMPLES_PER_FRAME * NUM_CHANNELS * 2  # 16-bit = 2 bytes
-            FRAME_DURATION = SAMPLES_PER_FRAME / SAMPLE_RATE  # 0.02 seconds
+            SAMPLES_PER_FRAME = 480  # 10ms frames for smoother playback
+            BYTES_PER_FRAME = SAMPLES_PER_FRAME * 2  # mono 16-bit
+            FRAME_DURATION = SAMPLES_PER_FRAME / SAMPLE_RATE  # 0.01s
 
             frames_sent = 0
+            start_time = time.monotonic()
 
             while True:
                 data = await self._ffmpeg_process.stdout.read(BYTES_PER_FRAME)
                 if not data:
-                    logger.info(f"Bot {self.name}: audio stream ended (sent {frames_sent} frames)")
+                    logger.info(f"Bot {self.name}: stream ended ({frames_sent} frames)")
                     break
 
-                # Pad if partial read
                 if len(data) < BYTES_PER_FRAME:
                     data += b'\x00' * (BYTES_PER_FRAME - len(data))
 
                 frame = rtc.AudioFrame(
                     data=data,
                     sample_rate=SAMPLE_RATE,
-                    num_channels=NUM_CHANNELS,
+                    num_channels=1,
                     samples_per_channel=SAMPLES_PER_FRAME,
                 )
 
                 await self._audio_source.capture_frame(frame)
                 frames_sent += 1
 
-                # Pace to real-time
-                await asyncio.sleep(FRAME_DURATION)
+                # Monotonic clock pacing — prevents drift/stutter
+                target_time = start_time + (frames_sent * FRAME_DURATION)
+                sleep_time = target_time - time.monotonic()
+                if sleep_time > 0:
+                    await asyncio.sleep(sleep_time)
 
-            # Check for ffmpeg errors
             _, stderr = await self._ffmpeg_process.communicate()
             if stderr:
-                logger.warning(f"Bot {self.name}: ffmpeg stderr: {stderr.decode()[:500]}")
+                logger.warning(f"Bot {self.name}: ffmpeg: {stderr.decode()[:300]}")
 
         except asyncio.CancelledError:
-            logger.info(f"Bot {self.name}: audio stream cancelled")
+            logger.info(f"Bot {self.name}: audio cancelled")
         except Exception as e:
-            logger.error(f"Bot {self.name}: audio stream error: {e}", exc_info=True)
+            logger.error(f"Bot {self.name}: stream error: {e}", exc_info=True)
         finally:
             self.is_playing = False
 

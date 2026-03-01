@@ -32,40 +32,9 @@ class LiveRoomScreen extends StatefulWidget {
 
 class _LiveRoomScreenState extends State<LiveRoomScreen> {
   bool _isLeaving = false;
+  bool _isDragging = false; // Show zone borders when dragging
 
-  void _shareRoomLink() {
-    final deepLink = 'https://vivaclub.app/rooms/${widget.roomId}';
-    try {
-      Share.share(
-        '💬 Join me in "${widget.title}" on VivaClub — a safe space to talk! $deepLink',
-        subject: 'Join my VivaClub room',
-      );
-    } catch (e) {
-      debugPrint('Share failed: $e');
-    }
-  }
-
-  void _leaveRoom() async {
-    if (_isLeaving) return;
-    _isLeaving = true;
-
-    try {
-      await context.read<LiveKitRoomService>().leave(); // Await leave
-    } catch (e) {
-      debugPrint('Error leaving room: $e');
-    }
-
-    if (mounted) {
-      // Safe navigation
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go('/dashboard');
-      }
-    }
-  }
-
-  // Avatar accent colors for the ring around speakers
+  // Avatar accent colors
   static const List<List<Color>> _avatarColors = [
     [Color(0xFFF3E8FF), Color(0xFF9333EA)],
     [Color(0xFFDBEAFE), Color(0xFF2563EB)],
@@ -106,6 +75,35 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     service.setMicrophoneEnabled(service.isMuted);
   }
 
+  void _shareRoomLink() {
+    final deepLink = 'https://vivaclub.app/rooms/${widget.roomId}';
+    try {
+      Share.share(
+        '💬 Join me in "${widget.title}" on VivaClub — a safe space to talk! $deepLink',
+        subject: 'Join my VivaClub room',
+      );
+    } catch (e) {
+      debugPrint('Share failed: $e');
+    }
+  }
+
+  void _leaveRoom() async {
+    if (_isLeaving) return;
+    _isLeaving = true;
+    try {
+      await context.read<LiveKitRoomService>().leave();
+    } catch (e) {
+      debugPrint('Error leaving room: $e');
+    }
+    if (mounted) {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/dashboard');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<LiveKitRoomService>(
@@ -113,7 +111,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         final participants = service.participants;
         final isMuted = service.isMuted;
 
-        // Speakers = anyone with mic enabled or the local participant if host
+        // Speakers = anyone with audio published or local participant if host
         final speakers = participants.where((p) {
           if (p is LocalParticipant) {
             return widget.isHost || p.audioTrackPublications.isNotEmpty;
@@ -144,27 +142,25 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 children: [
                   Column(
                     children: [
-                      // Header
                       _buildHeader(participants.length),
-
-                      // Scrollable content
                       Expanded(
                         child: SingleChildScrollView(
                           padding: EdgeInsets.fromLTRB(24.w, 16.h, 24.w, 140.h),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildSharingSpace(speakers),
+                              // === SPEAKER ZONE (DragTarget) ===
+                              _buildSpeakerZone(speakers, service),
                               SizedBox(height: 24.h),
-                              _buildListenersSection(listeners),
+                              // === LISTENER ZONE (DragTarget) ===
+                              _buildListenerZone(listeners, service),
                             ],
                           ),
                         ),
                       ),
                     ],
                   ),
-
-                  // Bottom floating controls
+                  // Bottom controls
                   Positioned(
                     bottom: 16.h,
                     left: 0,
@@ -180,23 +176,21 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     );
   }
 
+  // ─── HEADER ───────────────────────────
   Widget _buildHeader(int participantCount) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-      decoration: const BoxDecoration(color: Colors.transparent),
       child: Row(
         children: [
           GestureDetector(
             onTap: () {
-              // Refresh room list
               context.read<RoomBloc>().add(RoomLoad());
-
               if (context.canPop()) {
                 context.pop();
               } else {
                 context.go('/dashboard');
               }
-            }, // Don't leave, just go back (audio persists)
+            },
             child: Icon(
               Icons.arrow_back_ios,
               color: AppTheme.textDark,
@@ -255,8 +249,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     );
   }
 
-  Widget _buildSharingSpace(List<Participant> speakers) {
-    return Column(
+  // ─── SPEAKER ZONE ─────────────────────
+  Widget _buildSpeakerZone(
+    List<Participant> speakers,
+    LiveKitRoomService service,
+  ) {
+    Widget content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -286,24 +284,101 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           itemCount: speakers.length,
           itemBuilder: (context, index) {
             final p = speakers[index];
+            final avatar = _buildParticipantAvatar(p, true, index);
+
+            // Host can drag speakers back to listener zone
+            if (widget.isHost && p is! LocalParticipant) {
+              return LongPressDraggable<Participant>(
+                data: p,
+                onDragStarted: () => setState(() => _isDragging = true),
+                onDragEnd: (_) => setState(() => _isDragging = false),
+                onDraggableCanceled: (_, __) =>
+                    setState(() => _isDragging = false),
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: SizedBox(
+                    width: 80.w,
+                    child: Opacity(opacity: 0.85, child: avatar),
+                  ),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: avatar),
+                child: GestureDetector(
+                  onTap: () => _showProfileCard(context, p, service),
+                  child: avatar,
+                ),
+              );
+            }
+
             return GestureDetector(
-              onTap: () {
-                if (widget.isHost && p is! LocalParticipant) {
-                  _showSpeakerOptionsDialog(context, p);
-                }
-              },
-              child: _buildParticipantAvatar(p, true, index),
+              onTap: () => _showProfileCard(context, p, service),
+              child: avatar,
             );
           },
         ),
+        if (speakers.isEmpty)
+          Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 32.h),
+              child: Text(
+                'No speakers yet',
+                style: TextStyle(fontSize: 12.sp, color: AppTheme.textGrey),
+              ),
+            ),
+          ),
       ],
     );
+
+    // Wrap in DragTarget — host can drop listeners here to invite
+    if (widget.isHost) {
+      return DragTarget<Participant>(
+        onWillAcceptWithDetails: (details) {
+          // Accept only listeners (not already speakers)
+          return !speakers.contains(details.data);
+        },
+        onAcceptWithDetails: (details) {
+          final p = details.data;
+          // Invite listener to speak
+          service.inviteSpeaker(p.identity);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Invited ${p.name} to speak')));
+        },
+        builder: (context, candidateData, rejectedData) {
+          final isHovering = candidateData.isNotEmpty;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16.r),
+              border: _isDragging
+                  ? Border.all(
+                      color: isHovering
+                          ? AppTheme.skyBlue
+                          : AppTheme.skyBlue.withValues(alpha: 0.3),
+                      width: isHovering ? 2.5 : 1.5,
+                      strokeAlign: BorderSide.strokeAlignOutside,
+                    )
+                  : null,
+              color: isHovering
+                  ? AppTheme.skyBlue.withValues(alpha: 0.05)
+                  : Colors.transparent,
+            ),
+            child: content,
+          );
+        },
+      );
+    }
+    return content;
   }
 
-  Widget _buildListenersSection(List<Participant> listeners) {
-    if (listeners.isEmpty) return const SizedBox();
+  // ─── LISTENER ZONE ────────────────────
+  Widget _buildListenerZone(
+    List<Participant> listeners,
+    LiveKitRoomService service,
+  ) {
+    if (listeners.isEmpty && !_isDragging) return const SizedBox();
 
-    return Column(
+    Widget content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -315,31 +390,115 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           ),
         ),
         SizedBox(height: 16.h),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 12.w,
-            mainAxisSpacing: 16.h,
-            childAspectRatio: 0.8,
+        if (listeners.isNotEmpty)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 12.w,
+              mainAxisSpacing: 16.h,
+              childAspectRatio: 0.8,
+            ),
+            itemCount: listeners.length,
+            itemBuilder: (context, index) {
+              final p = listeners[index];
+              final avatar = _buildParticipantAvatar(p, false, index);
+              final handRaised = service.isHandRaised(p);
+
+              // Host can drag hand-raised listeners to speaker zone
+              if (widget.isHost && handRaised) {
+                return LongPressDraggable<Participant>(
+                  data: p,
+                  onDragStarted: () => setState(() => _isDragging = true),
+                  onDragEnd: (_) => setState(() => _isDragging = false),
+                  onDraggableCanceled: (_, __) =>
+                      setState(() => _isDragging = false),
+                  feedback: Material(
+                    color: Colors.transparent,
+                    child: SizedBox(
+                      width: 60.w,
+                      child: Opacity(opacity: 0.85, child: avatar),
+                    ),
+                  ),
+                  childWhenDragging: Opacity(opacity: 0.3, child: avatar),
+                  child: GestureDetector(
+                    onTap: () => _showProfileCard(context, p, service),
+                    child: avatar,
+                  ),
+                );
+              }
+
+              return GestureDetector(
+                onTap: () => _showProfileCard(context, p, service),
+                child: avatar,
+              );
+            },
           ),
-          itemCount: listeners.length,
-          itemBuilder: (context, index) {
-            return GestureDetector(
-              onTap: () {
-                if (widget.isHost) {
-                  _showInviteDialog(context, listeners[index]);
-                }
-              },
-              child: _buildParticipantAvatar(listeners[index], false, index),
-            );
-          },
-        ),
+        if (listeners.isEmpty && _isDragging)
+          Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24.h),
+              child: Text(
+                'Drop here to move back to listeners',
+                style: TextStyle(fontSize: 12.sp, color: AppTheme.textGrey),
+              ),
+            ),
+          ),
       ],
     );
+
+    // Wrap in DragTarget — host can drop speakers here to demote
+    if (widget.isHost) {
+      return DragTarget<Participant>(
+        onWillAcceptWithDetails: (details) {
+          // Accept only current speakers (demoting)
+          return !listeners.contains(details.data);
+        },
+        onAcceptWithDetails: (details) {
+          final p = details.data;
+          // Revoke speaker: mute + remove publish permission
+          // For now, mute them which effectively demotes
+          if (p.audioTrackPublications.isNotEmpty) {
+            service.muteParticipant(
+              p.identity,
+              p.audioTrackPublications.first.sid,
+              true,
+            );
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${p.name} moved to listeners')),
+          );
+        },
+        builder: (context, candidateData, rejectedData) {
+          final isHovering = candidateData.isNotEmpty;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16.r),
+              border: _isDragging
+                  ? Border.all(
+                      color: isHovering
+                          ? AppTheme.mintGreen
+                          : AppTheme.textGrey.withValues(alpha: 0.3),
+                      width: isHovering ? 2.5 : 1.5,
+                      strokeAlign: BorderSide.strokeAlignOutside,
+                    )
+                  : null,
+              color: isHovering
+                  ? AppTheme.mintGreen.withValues(alpha: 0.05)
+                  : Colors.transparent,
+            ),
+            child: content,
+          );
+        },
+      );
+    }
+    return content;
   }
 
+  // ─── BOTTOM CONTROLS ──────────────────
   Widget _buildBottomControls(bool isMuted, LiveKitRoomService service) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
@@ -348,9 +507,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         children: [
           Row(
             children: [
+              // Hand raise (for listeners)
               GestureDetector(
                 onTap: () {
-                  // Toggle based on current state (read from metadata)
                   final isRaised = service.isHandRaised(
                     service.room!.localParticipant!,
                   );
@@ -379,7 +538,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 ),
               ),
               SizedBox(width: 16.w),
-              // Only show Mic toggle if user is a speaker (host or has permissions)
+              // Mic toggle — only for speakers
               if (widget.isHost ||
                   (service.room?.localParticipant?.permissions.canPublish ==
                       true))
@@ -424,17 +583,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                   ),
                 ],
               ),
-              child: Row(
-                children: [
-                  Text(
-                    '✌️ Leave quietly',
-                    style: TextStyle(
-                      color: const Color(0xFFEF4444),
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+              child: Text(
+                '✌️ Leave quietly',
+                style: TextStyle(
+                  color: const Color(0xFFEF4444),
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -443,9 +598,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     );
   }
 
+  // ─── PARTICIPANT AVATAR ───────────────
   Widget _buildParticipantAvatar(Participant p, bool isSpeaker, int index) {
     final colors = _avatarColors[index % _avatarColors.length];
-    final isLocal = p is LocalParticipant;
     final isSpeaking = p.isSpeaking;
 
     return Column(
@@ -478,31 +633,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                   style: TextStyle(fontSize: isSpeaker ? 30.sp : 22.sp),
                 ),
               ),
-              if (isSpeaker)
-                Positioned(
-                  top: -4,
-                  right: -4,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 6.w,
-                      vertical: 3.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF262626),
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: Icon(
-                      isLocal
-                          ? Icons.auto_awesome
-                          : (p.metadata?.contains('"role": "doctor"') == true ||
-                                p.metadata?.contains('"role": "admin"') == true)
-                          ? Icons.verified_user
-                          : null, // Only show if doctor/admin
-                      size: 10.sp,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
               // Hand raise indicator
               if (Provider.of<LiveKitRoomService>(
                 context,
@@ -511,7 +641,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                 Positioned(
                   top: -4,
                   left: -4,
-                  child: _buildIndicatorCircle(
+                  child: _buildIndicator(
                     icon: Icons.front_hand,
                     color: AppTheme.butteryYellow,
                     iconColor: const Color(0xFF854D0E),
@@ -524,11 +654,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                   right: -2,
                   child: Builder(
                     builder: (context) {
-                      final isMuted =
+                      final muted =
                           p.audioTrackPublications.isEmpty ||
                           p.audioTrackPublications.every((pub) => pub.muted);
-                      if (isMuted) {
-                        return _buildIndicatorCircle(
+                      if (muted) {
+                        return _buildIndicator(
                           icon: Icons.mic_off,
                           color: AppTheme.error,
                         );
@@ -552,7 +682,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     );
   }
 
-  Widget _buildIndicatorCircle({
+  Widget _buildIndicator({
     required IconData icon,
     required Color color,
     Color iconColor = Colors.white,
@@ -572,112 +702,202 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     );
   }
 
-  void _showInviteDialog(BuildContext context, Participant p) {
-    showDialog(
+  // ─── PROFILE ID CARD (bottom sheet) ───
+  void _showProfileCard(
+    BuildContext context,
+    Participant p,
+    LiveKitRoomService service,
+  ) {
+    final isLocal = p is LocalParticipant;
+
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Manage ${p.name}'),
-        content: Text('What would you like to do with ${p.name}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          margin: EdgeInsets.all(16.w),
+          padding: EdgeInsets.all(20.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24.r),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
           ),
-          if (widget.isHost)
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close dialog first
-                _showKickConfirmation(context, p);
-              },
-              child: const Text('Kick', style: TextStyle(color: Colors.red)),
-            ),
-          TextButton(
-            onPressed: () {
-              context.read<LiveKitRoomService>().inviteSpeaker(p.identity);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Invited ${p.name} to speak')),
-              );
-            },
-            child: const Text('Invite to Speak'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag indicator
+              Container(
+                width: 40.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
+              ),
+              SizedBox(height: 20.h),
+
+              // Avatar
+              Container(
+                width: 72.w,
+                height: 72.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFF3E8FF),
+                  border: Border.all(
+                    color: AppTheme.skyBlue.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  EmojiUtils.getEmojiForName(p.name),
+                  style: TextStyle(fontSize: 32.sp),
+                ),
+              ),
+              SizedBox(height: 12.h),
+
+              // Name
+              Text(
+                EmojiUtils.getNameWithoutTag(p.name),
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              SizedBox(height: 4.h),
+
+              // Role badge
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: _getRoleBadgeColor(p),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Text(
+                  _getRoleLabel(p),
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20.h),
+
+              // Action buttons
+              if (!isLocal)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Follow button
+                    _buildCardButton(
+                      icon: Icons.person_add_rounded,
+                      label: 'Follow',
+                      color: AppTheme.skyBlue,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Followed ${p.name}')),
+                        );
+                      },
+                    ),
+                    SizedBox(width: 12.w),
+                    // Report button
+                    _buildCardButton(
+                      icon: Icons.flag_rounded,
+                      label: 'Report',
+                      color: Colors.orange,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _showReportDialog(context, p);
+                      },
+                    ),
+                    // Kick — host only
+                    if (widget.isHost) ...[
+                      SizedBox(width: 12.w),
+                      _buildCardButton(
+                        icon: Icons.remove_circle_rounded,
+                        label: 'Kick',
+                        color: const Color(0xFFEF4444),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _showKickConfirmation(context, p);
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              SizedBox(height: 8.h),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog first
-              _showReportDialog(context, p);
-            },
-            child: const Text('Report', style: TextStyle(color: Colors.orange)),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  void _showSpeakerOptionsDialog(BuildContext context, Participant p) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Manage Speaker ${p.name}'),
-        content: Column(
+  Widget _buildCardButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (p.audioTrackPublications.isNotEmpty)
-              ...p.audioTrackPublications.map((track) {
-                final isMuted = track.muted;
-                return ListTile(
-                  leading: Icon(isMuted ? Icons.mic_off : Icons.mic),
-                  title: Text(isMuted ? 'Unmute' : 'Mute'),
-                  onTap: () {
-                    context.read<LiveKitRoomService>().muteParticipant(
-                      p.identity,
-                      track.sid,
-                      !isMuted,
-                    );
-                    Navigator.pop(context);
-                  },
-                );
-              }),
-            ListTile(
-              leading: const Icon(
-                Icons.remove_circle_outline,
-                color: Colors.red,
+            Icon(icon, size: 16.sp, color: color),
+            SizedBox(width: 6.w),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: color,
               ),
-              title: const Text(
-                'Kick from Room',
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showKickConfirmation(context, p);
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.report_problem_outlined,
-                color: Colors.orange,
-              ),
-              title: const Text(
-                'Report User',
-                style: TextStyle(color: Colors.orange),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showReportDialog(context, p);
-              },
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
       ),
     );
   }
 
+  Color _getRoleBadgeColor(Participant p) {
+    if (p.metadata?.contains('"role": "admin"') == true) {
+      return const Color(0xFF9333EA);
+    }
+    if (p.metadata?.contains('"role": "doctor"') == true) {
+      return const Color(0xFF2563EB);
+    }
+    if (p.metadata?.contains('"role": "bot"') == true) {
+      return const Color(0xFF059669);
+    }
+    return AppTheme.textGrey;
+  }
+
+  String _getRoleLabel(Participant p) {
+    if (p is LocalParticipant) return 'You';
+    if (p.metadata?.contains('"role": "admin"') == true) return 'Admin';
+    if (p.metadata?.contains('"role": "doctor"') == true) return 'Doctor';
+    if (p.metadata?.contains('"role": "bot"') == true) return 'Bot';
+    return 'Participant';
+  }
+
+  // ─── KICK CONFIRMATION ────────────────
   void _showKickConfirmation(BuildContext context, Participant p) {
     showDialog(
       context: context,
@@ -704,6 +924,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     );
   }
 
+  // ─── REPORT DIALOG ────────────────────
   void _showReportDialog(BuildContext context, Participant p) {
     String selectedReason = 'harassment';
     final repo = context.read<CommunityRepository>();
@@ -746,9 +967,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                         DropdownMenuItem(value: 'other', child: Text('Other')),
                       ],
                       onChanged: (val) {
-                        setState(() {
-                          selectedReason = val!;
-                        });
+                        setState(() => selectedReason = val!);
                       },
                     ),
                     const SizedBox(height: 16),
@@ -774,7 +993,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                     Navigator.pop(context);
                     try {
                       await repo.submitReport(
-                        p.identity, // LiveKit identity is mapped to User ID or Ghost ID
+                        p.identity,
                         roomId,
                         selectedReason,
                         descriptionController.text,
