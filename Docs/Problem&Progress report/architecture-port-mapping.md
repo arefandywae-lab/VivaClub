@@ -103,13 +103,7 @@ flowchart TB
     DjangoAPI -- "HTTP POST (livekit-api)\n[MuteParticipant, UpdateMetadata]" --> LiveKitAPI
     LiveKitAPI -- "HTTP POST Webhook\n[participant_joined, room_finished]" --> DjangoAPI
 
-    %% G. Bot Service Loop
-    DjangoAPI -- "LPUSH (Redis List)\n[Task: 'Join room XYZ']" --> Redis
-    Redis -- "BLPOP (Wait for task)\n[Pick up Join Task]" --> BotWorker
-    BotWorker -- "HTTP GET /api/bot/token/\n[Request Room Token]" --> DjangoAPI
-    BotWorker -- "WSS (Signaling)\n[Connect as bot identity]" --> LiveKitAPI
-    BotWorker -. "UDP (Media Payload)\n[Stream generated audio frames]" .-> LiveKitRTC
-    
+    %% G. Bot Service Loop (Removed: No AI Bot in current scope)
     %% ==========================================
     %% STYLING
     %% ==========================================
@@ -118,14 +112,12 @@ flowchart TB
     classDef backend fill:#bbf,stroke:#333,stroke-width:2px;
     classDef data fill:#bfb,stroke:#333,stroke-width:2px;
     classDef rtc fill:#fbb,stroke:#333,stroke-width:2px;
-    classDef bot fill:#dfd,stroke:#333,stroke-width:2px;
     
     class Flutter,Browser client;
     class Caddy proxy;
     class DjangoAPI,Daphne,NextJS backend;
     class Postgres,Redis data;
     class LiveKitAPI,LiveKitRTC rtc;
-    class BotWorker bot;
 ```
 
 ---

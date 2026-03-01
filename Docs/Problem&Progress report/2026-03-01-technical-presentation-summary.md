@@ -12,9 +12,8 @@
     *   **เหตุผล:** เป็น Cross-platform ที่รองรับการทำแอปมือถือทั้ง iOS และ Android จาก Codebase เดียว และมี Library ที่รองรับ WebRTC (LiveKit) ได้อย่างมีประสิทธิภาพระดับ Native ทำให้การจัดการเสียง (Audio Stream) ทำได้เสถียร
 *   **⚙️ Backend (Django + Django Channels / Daphne):**
     *   **เหตุผล:** Django มีระบบ ORM และ Admin ที่แข็งแกร่งช่วยให้สร้าง API พื้นฐานได้เร็ว ส่วน **Django Channels** เข้ามาช่วยรับมือกับ WebSockets (Async) เพื่อทำ Real-time Notification ส่งแจ้งเตือนเวลามีคนกดติดตาม หรือเข้าห้อง
-    *   นอกจากนี้ Python ยังตอบโจทย์สุดๆ เวลาที่เราต้องเขียน **AI Companion Bot** เพราะ Library ของ AI/LLM ส่วนใหญ่เขียนด้วย Python
 *   **📡 Message Broker & Queue (Redis):**
-    *   **เหตุผล:** ใช้ทำ Pub/Sub เพื่อเป็นคนกลางกระายข้อความ (Broadcast) ระหว่าง WebSockets หลายๆ Connection และใช้เป็นคิว (Task Queue) สำหรับสั่งงาน Background Worker (เช่น โยนงานไปให้ Bot เข้าห้อง)
+    *   **เหตุผล:** ใช้ทำ Pub/Sub เพื่อเป็นคนกลางกระจายข้อความ (Broadcast) ระหว่าง WebSockets หลายๆ Connection และลดภาระคอขวดของฐานข้อมูลหลัก
 *   **🗄️ Database (PostgreSQL):**
     *   **เหตุผล:** เป็น Relational Database ที่มีความเสถียร (ACID Compliance) เหมาะสำหรับการเก็บข้อมูลที่มีความสัมพันธ์กันซับซ้อน เช่น User, Room, Session และ Metadata ต่างๆ
 *   **💻 Admin Dashboard (Next.js):**
@@ -44,8 +43,6 @@
     *   แต่ **LiveKit ต้องการคุยผ่านโปรโตคอล UDP (Port 7882)** เพื่อให้เสียงมีความหน่วงต่ำที่สุด (Ultra-low Latency) การคุยผ่าน TCP/HTTP จะทำให้เสียงดีเลย์ หากใช้ PaaS เราจะไม่สามารถเจาะพอร์ต UDP หรือ Custom Ports แบบนี้ได้เลย
 2.  **สถาปัตยกรรมแบบ Multi-Container (Microservices):**
     *   โปรเจกต์ประกอบด้วยคอนเทนเนอร์หลายตัวที่ต้องทำงานคุยกันในวง Network ภายใน (Backend, Frontend, Redis, Postgres, LiveKit, Bot Worker) การเช่า VPS (เช่น DigitalOcean, AWS EC2, หรือ Cloud ทั่วไปที่เป็นแบบ VM) ทำให้เราสร้างโครงสร้าง Docker Compose ภายใน Server เดียวกันได้อย่างอิสระ
-3.  **การรันงานแบบ Background Process:**
-    *   PaaS บางที่มี Time-out (เช่น 30 วินาทีถึง 1 นาทีรันตาย) แต่ AI Bot หรือโฮสต์ห้องสนทนาของเราต้องเปิด Connection แช่ไว้แบบยาวนานหลายชั่วโมง (Long-lived connections + WebSockets) VPS จึงตอบโจทย์กว่า
 4.  **ความคุ้มค่า (Predictable Cost):** 
     *   การประมวลผล WebRTC และการทำ Audio Streaming ใช้ Bandwidth ค่อนข้างเยอะ การใช้ VPS แบบเหมาจ่ายต่อเดือนจึงประหยัดและคุมงบประมาณได้ชัวร์กว่าแบบ Pay-per-use
 

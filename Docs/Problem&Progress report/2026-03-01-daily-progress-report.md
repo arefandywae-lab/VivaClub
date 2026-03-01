@@ -2,9 +2,7 @@
 **Date:** 2026-02-28 to 2026-03-01
 
 ## 📌 สรุปสิ่งที่ทำไป (What We Accomplished)
-
-ช่วงที่ผ่านมาเราได้โฟกัสเรื่องการแก้บั๊กสำคัญที่ Block การใช้งานฝั่ง Production (VPS) และการปรับปรุง UX/UI ในห้อง Live Room บนแอป Flutter รวมถึงปัญหาเสียงกระตุกของ Bot Service 
-
+ช่วงที่ผ่านมาเราได้โฟกัสเรื่องการแก้บั๊กสำคัญที่ Block การใช้งานฝั่ง Production (VPS) และการปรับปรุง UX/UI ในห้อง Live Room บนแอป Flutter
 ### 1. 🐛 การแก้บั๊กบน Production (VPS & Backend)
 - **Redis WebSocket Error (`'tuple' object has no attribute 'decode'`):**
   - **ปัญหา:** Django Channels ไม่สามารถเชื่อมต่อ Redis ได้เพราะใน `settings.py` ใช้ config แบบ Tuple `('host', port)` ซึ่ง `channels_redis` เวอร์ชั่นใหม่ไม่รองรับ
@@ -34,10 +32,6 @@
 - **อัปเดตโลโก้แอป:**
   - ใช้โฟลเดอร์ `Assets/images` เปลื่ยนโลโก้นกเหยี่ยวเป็นโลโก้หลักของ VivaClub (`flutter_launcher_icons`)
 
-### 3. 🤖 ปัญหา AI Bot Service
-- **เสียง Bot กระตุก / ขาดๆ หายๆ:**
-  - **ปัญหา:** ใช้ `asyncio.sleep(FRAME_DURATION)` แล้วเกิดเวลาสะสม (Drift) ทำให้ส่งเฟรมเสียงไม่ตรงกับจังหวะเวลาจริงของ LiveKit
-  - **วิธีแก้:** เปลี่ยนไปอิงตามนาฬิการะบบ `time.monotonic()` เพื่อคำนวณเวลาพักของแต่ละลูป (Pacing) และปรับเฟรมเสียงเป็น 10ms (480 samples ต่อเฟรม) เสียงจึงลื่นไหลขึ้น
 
 ## 📋 ข้อสังเกตและงานถัดไป (Next Steps)
 - การใช้ LiveKit Metadata ช่วยให้ Backend ส่งข้อมูลถึง Client ได้ง่ายขึ้นโดยไม่ต้องยิง API เพิ่ม (เช่น เก็บ `role`, `host`, `speaker`, `handRaised`, `ghost_id`)
