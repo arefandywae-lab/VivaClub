@@ -1,4 +1,4 @@
-import { Home, Users, Settings, Activity, LogOut } from "lucide-react";
+import { Home, Users, Settings, Activity, LogOut, Bot } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -27,6 +27,10 @@ export function Sidebar() {
                 <Link href="/users" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
                     <Users className="mr-3 h-5 w-5" />
                     User Management
+                </Link>
+                <Link href="/bots" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
+                    <Bot className="mr-3 h-5 w-5" />
+                    Bot Management
                 </Link>
                 <Link href="/settings" className="flex items-center rounded-lg px-4 py-3 hover:bg-slate-900 hover:text-emerald-400 transition-colors">
                     <Settings className="mr-3 h-5 w-5" />

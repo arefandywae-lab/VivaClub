@@ -14,6 +14,11 @@ vivaclubs.site, www.vivaclubs.site {
         file_server
     }
 
+    # Bot Service API
+    handle_path /bot-api/* {
+        reverse_proxy vivaclub_bot_service:9090
+    }
+
     # Proxy to Django Application (handles both HTTP and WebSocket)
     reverse_proxy vivaclub_backend:8000
 }

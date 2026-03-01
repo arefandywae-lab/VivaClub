@@ -1,0 +1,7 @@
+fastapi>=0.104
+uvicorn>=0.24
+httpx>=0.25
+livekit>=0.17
+livekit-api>=1.0
+yt-dlp>=2024.1
+numpy>=1.26

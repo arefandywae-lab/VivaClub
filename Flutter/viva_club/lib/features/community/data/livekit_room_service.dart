@@ -65,9 +65,7 @@ class LiveKitRoomService extends ChangeNotifier {
       _isHost = isHost;
       _isConnecting = false;
 
-      if (isHost) {
-        await _room!.localParticipant?.setMicrophoneEnabled(true);
-      }
+      // Everyone starts muted — user manually toggles mic via the mic button
 
       _updateParticipants();
       notifyListeners();
