@@ -160,16 +160,13 @@ CACHES = {
 }
 
 # Channels Layer provided by Redis
-# Use the dict format with (host, port) tuple to avoid URL parsing issues with special chars in password
+# Use the URL string format — the dict format with (host, port) tuple causes
+# 'tuple' object has no attribute 'decode' errors in channels_redis
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [{
-                "address": (redis_host, redis_port),
-                "password": redis_pass_raw,
-                "db": redis_db,
-            }],
+            "hosts": [redis_url],
         },
     },
 }
