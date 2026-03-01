@@ -139,7 +139,6 @@ else:
 
 
 # Caches & Redis
-import re
 import urllib.parse
 raw_redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/1')
 
@@ -147,24 +146,26 @@ raw_redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/1')
 redis_pass_raw = os.environ.get('REDIS_PASSWORD', 'viva-redis-pass')
 redis_pass_encoded = urllib.parse.quote(redis_pass_raw)
 
-# Force inject the correct password from REDIS_PASSWORD into the URL
+# Extract just the host and port for Channels Redis config
 if '@' in raw_redis_url:
-    redis_url = re.sub(r'redis://(.*?@)', f'redis://:{redis_pass_encoded}@', raw_redis_url)
+    clean_redis_url = 'redis://' + raw_redis_url.split('@')[-1]
 else:
-    redis_url = raw_redis_url.replace('redis://', f'redis://:{redis_pass_encoded}@')
+    clean_redis_url = raw_redis_url
 
-os.environ['REDIS_URL'] = redis_url
+# Cache still needs the auth encoded URL
+os.environ['REDIS_URL'] = clean_redis_url.replace('redis://', f'redis://:{redis_pass_encoded}@')
 
 CACHES = {
-    'default': env.cache('REDIS_URL', default=redis_url),
+    'default': env.cache('REDIS_URL', default=os.environ['REDIS_URL']),
 }
 
 # Channels Layer provided by Redis
+# Channels Redis requires the password passed as a kwarg to avoid parsing issues with special symbols
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [redis_url],
+            "hosts": [(clean_redis_url, {"password": redis_pass_raw})],
         },
     },
 }
