@@ -111,7 +111,7 @@ export default function SettingsPage() {
                         <p>This will permanently delete:</p>
                         <ul className="list-disc list-inside text-slate-500 space-y-0.5">
                             <li>Rooms with titles starting with <code className="bg-red-100 px-1 rounded text-red-700">Test Room #</code> or <code className="bg-red-100 px-1 rounded text-red-700">Test Anxiety</code></li>
-                            <li>Users with usernames starting with <code className="bg-red-100 px-1 rounded text-red-700">clubhouse_user_</code></li>
+                            <li>Users with usernames starting with <code className="bg-red-100 px-1 rounded text-red-700">clubhouse_user_</code> or <code className="bg-red-100 px-1 rounded text-red-700">testuser_</code></li>
                             <li>Ghost profiles associated with those test users</li>
                         </ul>
                     </div>

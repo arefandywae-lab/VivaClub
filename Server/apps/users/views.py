@@ -78,8 +78,11 @@ class AdminCleanupTestDataView(APIView):
         rooms_count = test_rooms.count()
         test_rooms.delete()
 
-        # Delete test users (username starts with "clubhouse_user_")
-        test_users = User.objects.filter(username__startswith='clubhouse_user_')
+        # Delete test users (username starts with "clubhouse_user_" or "testuser_")
+        test_users = User.objects.filter(
+            Q(username__startswith='clubhouse_user_') |
+            Q(username__startswith='testuser_')
+        )
         users_count = test_users.count()
 
         # Delete their ghost profiles first
