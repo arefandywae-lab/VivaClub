@@ -19,88 +19,113 @@ VivaClub ใช้ **Microservices-oriented architecture** เล็กๆ เ�
 
 ```mermaid
 flowchart TB
-    %% External Clients
+    %% ==========================================
+    %% 1. EXTERNAL CLIENTS
+    %% ==========================================
     subgraph Clients ["📱 External Clients (Public Internet)"]
-        Flutter["Flutter Mobile App\n(Users)"]
-        Browser["Next.js Admin\nBrowser (Admins)"]
+        Flutter["Flutter Mobile App\n(Users joining rooms)"]
+        Browser["Next.js Admin Browser\n(Admins managing app)"]
     end
 
-    %% Caddy Gateway
-    subgraph Proxy ["🛡️ Reverse Proxy Gateway"]
-        Caddy["Caddy Server\nPort: 80, 443\n(Auto HTTPS/SSL)"]
+    %% ==========================================
+    %% 2. GATEWAY / REVERSE PROXY
+    %% ==========================================
+    subgraph Proxy ["🛡️ Reverse Proxy Gateway (Caddy)"]
+        Caddy{"Caddy Server\nPort: 80, 443\n(Auto HTTPS/SSL)"}
     end
 
-    %% Django Backend
+    %% ==========================================
+    %% 3. DJANGO BACKEND (API & Websockets)
+    %% ==========================================
     subgraph API_Services ["🧠 Backend Services (Port: 8000)"]
-        DjangoAPI["Django REST Framework\n(HTTP API)"]
-        Daphne["Daphne ASGI\n(WebSockets)"]
+        DjangoAPI["Django REST Framework\n(HTTP API Worker)"]
+        Daphne["Daphne ASGI Server\n(WebSocket Handler)"]
     end
 
-    %% Admin Panel
+    %% ==========================================
+    %% 4. NEXT.JS ADMIN DASHBOARD
+    %% ==========================================
     subgraph Admin_Frontend ["🤖 Admin Dashboard"]
         NextJS["Next.js SSR Server\nPort: 3000"]
     end
 
-    %% WebRTC Engine
+    %% ==========================================
+    %% 5. LIVEKIT (WebRTC Media Server)
+    %% ==========================================
     subgraph Media_Server ["🎙️ LiveKit WebRTC Engine"]
         LiveKitAPI["LiveKit API & Signaling\nPort: 7880 (HTTP/WS)"]
         LiveKitRTC["LiveKit RTC Transport\nPort: 7882 (TCP/UDP)"]
-        LiveKitTURN["LiveKit TURN Server\nPort: 7885 (UDP)"]
     end
 
-    %% Databases & Queues
+    %% ==========================================
+    %% 6. DATABASES & QUEUES
+    %% ==========================================
     subgraph Data_Layer ["🗄️ Database & Message Queue"]
         Postgres[(PostgreSQL\nPort: 5432)]
         Redis[(Redis\nPort: 6379)]
     end
     
-    %% AI Bot Service
+    %% ==========================================
+    %% 7. AI BOT SERVICE
+    %% ==========================================
     subgraph AI_Bots ["🤖 AI Bot Service"]
-        BotWorker["Python Bot Worker\n(Redis Listener)"]
+        BotWorker["Python Bot Worker\n(Redis Pub/Sub Listener)"]
     end
 
-    %% Connections: Client -> Gateway
-    Flutter -- "REST API (api/*)" --> Caddy
-    Flutter -- "In-App Notify (ws/*)" --> Caddy
-    Flutter -- "Signaling (WS 7880)" --> LiveKitAPI
-    Flutter -. "Audio Stream (UDP 7882)" .-> LiveKitRTC
+    %% ==========================================
+    %% NETWORK CONNECTIONS & DATA FLOW
+    %% ==========================================
+
+    %% A. Client -> Gateway Flows
+    Flutter -- "1. WSS (Signaling)\n[Join Room, Mute, Leave]" --> LiveKitAPI
+    Flutter -. "2. UDP (Media)\n[Voice streaming P2P/SFU]" .-> LiveKitRTC
+    Flutter -- "3. HTTPS POST /api/*\n[Login, Follow, Reports, Tokens]" --> Caddy
+    Flutter -- "4. WSS /ws/notifications/\n[Real-time In-App alerts]" --> Caddy
+    Browser -- "HTTPS admin.vivaclubs.site\n[View Dashboard, Ban users]" --> Caddy
     
-    Browser -- "admin.vivaclubs.site" --> Caddy
+    %% B. Gateway Routing (Caddy Rules)
+    Caddy -- "/api/* ➡️ HTTP:8000\n[Forward API requests]" --> DjangoAPI
+    Caddy -- "/ws/* ➡️ HTTP:8000\n[Upgrade Connection to WS]" --> Daphne
+    Caddy -- "admin.* ➡️ HTTP:3000\n[Serve React UI]" --> NextJS
+
+    %% C. Next.js -> Django API
+    NextJS -- "Fetch API (admin UI)\n[Get stats, ban user]" --> DjangoAPI
+
+    %% D. Django API -> Databases (Sync)
+    DjangoAPI -- "SQL INSERT/SELECT\n[Users, Rooms, Settings]" --> Postgres
+    DjangoAPI -- "Publish Messages (channel_layer)\n[Payload: notify_user, new_follower]" --> Redis
+
+    %% E. Daphne -> Databases (Async)
+    Redis -- "Subscribe/Consume Queue\n[Listen to channel_layer]" --> Daphne
+    Daphne -- "Push JSON msg down WS\n[Snackbars, Badges]" --> Flutter
+
+    %% F. LiveKit <-> Django (REST & Webhooks)
+    DjangoAPI -- "HTTP POST (livekit-api)\n[MuteParticipant, UpdateMetadata]" --> LiveKitAPI
+    LiveKitAPI -- "HTTP POST Webhook\n[participant_joined, room_finished]" --> DjangoAPI
+
+    %% G. Bot Service Loop
+    DjangoAPI -- "LPUSH (Redis List)\n[Task: 'Join room XYZ']" --> Redis
+    Redis -- "BLPOP (Wait for task)\n[Pick up Join Task]" --> BotWorker
+    BotWorker -- "HTTP GET /api/bot/token/\n[Request Room Token]" --> DjangoAPI
+    BotWorker -- "WSS (Signaling)\n[Connect as bot identity]" --> LiveKitAPI
+    BotWorker -. "UDP (Media Payload)\n[Stream generated audio frames]" .-> LiveKitRTC
     
-    %% Connections: Gateway -> Internal Services
-    Caddy -- "Reverse Proxy" --> NextJS
-    Caddy -- "Reverse Proxy (HTTP)" --> DjangoAPI
-    Caddy -- "Reverse Proxy (WS)" --> Daphne
-
-    %% Connections: Next.js -> API
-    NextJS -- "Fetch API (admin UI)" --> DjangoAPI
-
-    %% Connections: API -> Databases
-    DjangoAPI -- "Read/Write Users, Rooms" --> Postgres
-    Daphne -- "Push notifications" --> Postgres
-
-    %% Connections: API/WS -> Redis -> Bots/Daphne
-    DjangoAPI -- "Publish Messages" --> Redis
-    Redis -- "Subscribe/Pick up" --> Daphne
-    Redis -- "Task Queue Queue" --> BotWorker
-
-    %% Connections: API ↔ LiveKit
-    DjangoAPI -- "Mute/Kick/Token (REST)" --> LiveKitAPI
-    LiveKitAPI -- "Webhooks (e.g., joined)" --> DjangoAPI
-    BotWorker -- "Join Room (Bot Identity)" --> LiveKitAPI
-    BotWorker -. "Bot Audio Stream" .-> LiveKitRTC
-    
+    %% ==========================================
+    %% STYLING
+    %% ==========================================
     classDef client fill:#f9f,stroke:#333,stroke-width:2px;
     classDef proxy fill:#fbf,stroke:#333,stroke-width:2px;
     classDef backend fill:#bbf,stroke:#333,stroke-width:2px;
     classDef data fill:#bfb,stroke:#333,stroke-width:2px;
     classDef rtc fill:#fbb,stroke:#333,stroke-width:2px;
+    classDef bot fill:#dfd,stroke:#333,stroke-width:2px;
     
     class Flutter,Browser client;
     class Caddy proxy;
-    class DjangoAPI,Daphne,NextJS,BotWorker backend;
+    class DjangoAPI,Daphne,NextJS backend;
     class Postgres,Redis data;
-    class LiveKitAPI,LiveKitRTC,LiveKitTURN rtc;
+    class LiveKitAPI,LiveKitRTC rtc;
+    class BotWorker bot;
 ```
 
 ---
