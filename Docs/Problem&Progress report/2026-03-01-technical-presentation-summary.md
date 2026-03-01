@@ -22,6 +22,11 @@
 
 เราใช้สถาปัตยกรรมแบบ Hybrid Backend ภายในวง Network (Docker Compose) ของตัวเอง:
 
+*   **ทำไมถึงเช่า VPS (Virtual Private Server) แทนที่จะปาขึ้น Cloud PaaS สำเร็จรูปอย่าง Railway / Heroku / Vercel?**
+    *   **ปัญหาเรื่อง Port ของ WebRTC:** บริการอย่าง Railway หรือ Heroku ส่วนใหญ่จะเปิดทางให้เฉพาะเว็บพอร์ตมาตรฐาน (80/443 TCP) แต่แอปเราต้องใช้ **Port 7882 แบบ UDP** มหาศาลเพื่อสตรีมเสียง ถ้าไปใช้ PaaS พวกนี้ เราจะถูกบล็อกไม่ให้ใช้ UDP เลย ทำให้ระบบเสียงพังสนิท
+    *   **Control & Networking:** บริการ PaaS จะรันแต่ละโปรแกรมแยกส่วนกันชัดเจน การจะให้ Redis คุยกับ Django แล้วให้ Bot Worker วิ่งไปต่อ LiveKit ในวงปิด (Private Network) ทำได้ยากและตั้งค่าซับซ้อน พอเราเช่า VPS เปล่าๆ (เช่น DigitalOcean, AWS EC2) แล้วครอบด้วย Docker Compose เราเหมือนมี "โลกส่วนตัว" ที่ทุก Container คุยกันเองได้เต็มความเร็ว (Localhost speed) และเราควบคุมได้ 100% ว่าจะเปิดพอร์ตไหนให้โลกภายนอกเห็น
+    *   **ความคุ้มค่า (Pricing):** โพรเซสอย่าง Music Bot ต้องรันข้ามวันข้ามคืน (Long-running Tasks) ถ้าไปขึ้น Railway จะถูกคิดเงินตามหน่วยความจำและเวลาเป็นรายนาที ซึ่งบานปลายมาก การเหมา VPS เป็นรายเดือนจึงประหยัดและกะเกณฑ์งบได้ชัวร์กว่าแบบเห็นๆ
+
 *   **Django REST Framework (DRF)**
     *   **ทำไมถึงใช้ / ดีกว่าต้วอื่นยังไง:** ในขณะที่หลายทีมอาจจะใช้ Node.js หรือ Go แต่เราเลือก Django (Python) เพราะ "Time-to-Market" และ "Security" ระบบ ORM ของ Django แข็งแกร่งมาก ช่วยให้เราจัดการ Database Schema ที่ซับซ้อน (เช่น การทำ Follower, Room Ownership) ได้เร็ว และมีระบบ Authentication/Admin มาให้แบบพร้อมใช้
     *   **ข้อจำกัด:** ทำงานแบบ Synchronous (รอคิวประมวลผล) และกิน Memory มากกว่าภาษาอย่าง Go หากมีคนยิง API เข้ามาพร้อมกันหลักล้านคน อาจจะเจอปัญหาคอขวด (แต่เสกลของเราปัจจุบันยังรับได้สบาย)
@@ -61,20 +66,19 @@
 
 ---
 
-## 📡 สรุป Port Mapping (พอร์ตเชื่อมต่อสำหรับ Network Engineer)
+## 📡 สรุป Port Mapping & Data Flow (เจาะลึกทิศทางการไหลของข้อมูล)
 
-เพื่อให้ผู้ฟังหรือวิศวกรคนอื่นเห็นภาพว่าระบบเราคุยกันผ่านช่องทางไหน หรือ Service ใดผูกกับพอร์ตไหนบ้าง:
+เพื่อให้ผู้ฟังหรือวิศวกรเห็นภาพชัดเจนว่า ระบบคุยอะไร ไปหาใคร และวิ่งผ่านช่องทางไหน (เปิดอกคุยเรื่อง Network Security):
 
-| Service | Port | Protocol | Exposure | การใช้งาน (Usage) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Caddy Gateway** | 80, 443 | TCP | **Public** | รับ Traffic เว็บและ API หน้าด่านทั้งหมด (HTTPS) |
-| **Django API / Daphne** | 8000 | TCP | Internal | จัดการ Backend Logic โดยรับ Traffic ส่งต่อมาจาก Caddy |
-| **Next.js Dashboard** | 3000 | TCP | Internal | จัดการหน้า Admin UI โดยรับ Traffic ส่งต่อมาจาก Caddy |
-| **LiveKit API** | 7880 | TCP / WS | **Public** | จัดการ Signaling ควบคุมเหตุการณ์ในห้องเสียง (Client ต่อตรง) |
-| **LiveKit RTC** | 7881-7882 | UDP / TCP | **Public** | ส่งผ่านข้อมูลเสียง WebRTC (บังคับเปิด UDP Port) |
-| **PostgreSQL** | 5432 | TCP | Private | ฐานข้อมูลหลัก (เครือข่ายคุยได้ภายในกันเองเท่านั้น) |
-| **Redis** | 6379 | TCP | Private | ระบบคิวและแจ้งเตือน Channels (ภายในเท่านั้น) |
-
+| Service | Port / Protocol | Exposure | ใครคุยกับใคร (Data Flow) และคุยเรื่องอะไร? (Example) |
+| :--- | :--- | :--- | :--- |
+| **Caddy Gateway** | 80 & 443 (TCP) | **Public** | **โลกภายนอก ➡️ หน้าด่าน (HTTPS เสมอ):**<br>- แอบมือถือผู้ใช้ (Flutter) ยิงขอ Login Payload (`/api/login`)<br>- ผู้ใช้กดจอยหน้าแอป คุย WebSocket ผ่าน wss://โดเมนเรา/ws/ |
+| **Django API / Daphne** | 8000 (TCP) | Internal | **Caddy ➡️ Backend:**<br>- *ไป-กลับ:* ถ้ายิง API มา Caddy จะมุดท่อส่งเข้าพอร์ต 8000 ของคอนเทนเนอร์นี้ เพื่อไปเช็ค User Password ในฐานข้อมูลแล้วตอบกลับ<br>- *ค้างสาย:* ถ้าเป็น WebSocket ก็ค้างสายไว้คุย Notification ยาวๆ |
+| **Next.js Dashboard** | 3000 (TCP) | Internal | **Caddy ➡️ Admin UI:**<br>- แอดมินล็อกอินดู Dashboard ระบบ Caddy จะส่ง Traffic มุดมาที่พอร์ต 3000 เพื่อ Render หน้าสถิติ HTML ส่งกลับไปโชว์บราวเซอร์ |
+| **LiveKit API (Signaling)** | 7880 (TCP / WS) | **Public** | **Flutter / Bot Worker ➡️ LiveKit (ต่อตรง ไม่ผ่าน Caddy):**<br>- ผู้เล่นเอา Token ไปเคาะประตู LiveKit (พอร์ตนี้หน้าที่คือ "เช็คตั๋วข้ามแดนและส่งคำสั่ง")<br>- ตัวอย่างข้อมูล: "นาย A ขอกดเปิดไมค์", "คนในห้อง B มี 5 คนนะ", "นาย C ขอยกมือ" (เป็นแค่ข้อมูลสถานะห้อง ไม่ใช่เสียง!) |
+| **LiveKit RTC (Media Plane)** | 7881-7882 (**UDP** / TCP) | **Public** | **Flutter / Bot Worker ➡️ LiveKit (ต่อตรง ไม่ผ่าน Caddy):**<br>- นี่คือพระเอกของสถาปัตยกรรม **"ท่อลำเลียงเสียงเพียวๆ เดือดๆ"**<br>- 🗣️ ขณะที่คนกำลังพูด ตัวแอปมือถือจะแพ็กเอาคลื่นเสียง **ยิงรัวๆ อย่างบ้าคลั่งผ่านโพรโทคอล UDP (พอร์ต 7882)** ขึ้นไป เพื่อให้เซิร์ฟเวอร์กระจายเสียงนั้นลงมาให้คนฟังร้อยกว่าคนพร้อมๆ กัน! (ถ้าใช้ TCP หรือมุดผ่าน Proxy ตรงนี้จะทำเสียงช้าจนฟังไม่รู้เรื่อง) |
+| **PostgreSQL** | 5432 (TCP) | Private | **Django ➡️ Database:**<br>- โดนปิดตายจากหน้า Internet โดยเด็ดขาด<br>- คุยเฉพาะในวง Docker เผื่อดึงข้อมูล User ว่าชื่ออะไร ใคร Block ใครไว้บ้าง |
+| **Redis** | 6379 (TCP) | Private | **Django ↔ Daphne ↔ Bot Worker:**<br>- ทำงานเงียบๆ อยู่หลังบ้านคอยรับส่งข้อความ<br>- Django จับยัดข้อความสั่งให้ Bot Worker เล่นเพลงลงคิว Redis -> Bot Worker เห็นปุ๊บวิ่งไปเอา Token แล้วเสียบ LiveKit (7880, 7882) เอง |
 
 ---
 
