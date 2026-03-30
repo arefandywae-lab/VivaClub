@@ -1,7 +1,7 @@
 # VivaClub Development Progress
 
-**Last Updated:** 2026-02-27  
-**Overall Completion:** 38% (20/53 features)
+**Last Updated:** 2026-03-22  
+**Overall Completion:** 42% (22/53 features)
 
 ---
 
@@ -9,12 +9,13 @@
 
 | Category | Complete | Total | % | Status |
 |----------|----------|-------|---|--------|
-| **Clubhouse** | 15 | 15 | 100% | ✅ COMPLETE |
-| **Telemed (Patient)** | 1 | 12 | 8% | 🔴 Just Started |
-| **Doctor Side** | 0 | 10 | 0% | 🔴 Not Started |
-| **Safety & Moderation** | 4 | 8 | 50% | 🟡 In Progress |
+| **Clubhouse & Community** | 15 | 15 | 100% | ✅ COMPLETE |
+| **Telemed (Patient)** | 3 | 12 | 25% | 🟡 Backend Ready |
+| **Doctor Side** | 1 | 10 | 10% | 🟡 Backend Foundation |
+| **Safety & Moderation** | 5 | 8 | 62% | 🟡 In Progress |
 | **Monetization** | 0 | 8 | 0% | 🔴 Not Started |
-| **TOTAL** | **20** | **53** | **38%** | 🟡 In Progress |
+| **TOTAL** | **24** | **53** | **45%** | 🟡 In Progress |
+
 
 ---
 
@@ -176,11 +177,12 @@
 **Impact:** Foundation for SOS system  
 **Estimated Time:** 1 week
 
-- [ ] PHQ-9 questionnaire (9 questions)
-- [ ] Score calculation algorithm
-- [ ] Severity level classification
-- [ ] Assessment history
-- [ ] Unlock SOS button (score > 19)
+- [x] PHQ-9 questionnaire (Backend Model & API)
+- [x] Score calculation algorithm (Backend Logic)
+- [x] Severity level classification (Backend Logic)
+- [ ] PHQ-9 UI Flow in Flutter
+- [ ] Assessment history UI
+- [ ] Unlock SOS button (Logic exists, needs UI)
 - [ ] Daily check-in reminder
 
 **Database:** New `PHQ9Assessment` model  
@@ -218,9 +220,9 @@
 - [ ] Doctor ratings/reviews
 - [ ] Search doctors
 
-**Database:** New `ProfessionalProfile` model  
-**APIs Needed:** 5 endpoints  
-**Frontend:** Doctor list + profile screens
+**Database:** `ProfessionalProfile` model (Verified)  
+**APIs Needed:** Done (Verified)  
+**Frontend:** Doctor list + profile screens (MISSING)
 
 ---
 
@@ -228,9 +230,10 @@
 **Impact:** Core telemed functionality  
 **Estimated Time:** 1 week
 
-- [ ] View doctor's available time slots
-- [ ] Book appointment
-- [ ] 100% deposit payment
+- [x] View doctor's available time slots (Backend API)
+- [x] Book appointment / Reserve (Backend API & Transaction logic)
+- [x] 100% deposit payment (Logic simulated in confirm API)
+- [ ] Appointment Booking UI flow in Flutter
 - [ ] Cancellation (24h refund policy)
 - [ ] Appointment reminders
 - [ ] Appointment history
@@ -678,7 +681,10 @@
 | **Phase 3** | 2-3 weeks | 7-10 weeks | ~85% |
 | **Phase 4** | 2-3 weeks | 9-13 weeks | ~100% |
 
-**Total: 9-13 weeks (2-3 months) to Full MVP**
+**Phase 1-2 Summary:** 
+- Clubhouse features are mature.
+- Telemed backend foundations (Assessment, Bookings, Notes) are essentially ready.
+- The next major blockers are **Flutter UI implementation** for the Telemed flow.
 
 ---
 
