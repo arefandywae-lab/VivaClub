@@ -26,9 +26,9 @@ def test_journey():
         "password": PATIENT_PASSWORD,
         "email": f"{PATIENT_USERNAME}@example.com",
         "display_name": f"Test Patient {SUFFIX}",
-        "role": "PATIENT"
+        "role": "patient"
     }
-    resp = session.post(f"{BASE_URL}/users/register/", json=reg_data)
+    resp = session.post(f"{BASE_URL}/auth/register/", json=reg_data)
     if resp.status_code == 201:
         log(f"Registered patient: {PATIENT_USERNAME}")
     else:
@@ -37,7 +37,7 @@ def test_journey():
 
     # 2. Login
     login_data = {"username": PATIENT_USERNAME, "password": PATIENT_PASSWORD}
-    resp = session.post(f"{BASE_URL}/users/login/", json=login_data)
+    resp = session.post(f"{BASE_URL}/auth/login/", json=login_data)
     if resp.status_code == 200:
         tokens = resp.json()
         access_token = tokens['access']
@@ -111,7 +111,11 @@ def test_journey():
     if doctor_id:
         print("\n--- Phase 6: Booking Flow ---")
         # Note: We need a slot to exist. For testing, we'll assume there might be one or we skip.
-        resp = session.get(f"{BASE_URL}/clinical/slots/?doctor_id={doctor_id}")
+        resp = session.get(f"{BASE_URL}/clinical/timeslots/?doctor_id={doctor_id}")
+        if resp.status_code != 200:
+            log(f"Failed to fetch slots: {resp.text}", False)
+            return
+            
         slots = resp.json()
         if len(slots) > 0:
             slot_id = slots[0]['id']
@@ -145,9 +149,9 @@ def test_journey():
     # 10. Register Device Token
     token_data = {
         "token": f"fcm_token_{SUFFIX}",
-        "device_type": "ANDROID"
+        "device_type": "android"
     }
-    resp = session.post(f"{BASE_URL}/users/device-tokens/", json=token_data)
+    resp = session.post(f"{BASE_URL}/auth/device-tokens/", json=token_data)
     if resp.status_code == 201:
         log("FCM Device Token registered successfully")
     else:

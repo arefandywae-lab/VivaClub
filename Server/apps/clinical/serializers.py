@@ -40,7 +40,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = '__all__'
-        read_only_fields = ['id', 'patient', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'patient', 'doctor', 'created_at', 'updated_at']
 
 class SOSCallSerializer(serializers.ModelSerializer):
     patient_detail = UserMinimalSerializer(source='patient', read_only=True)
