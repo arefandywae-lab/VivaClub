@@ -207,15 +207,13 @@
 **APIs Needed:** 4 endpoints  
 **Frontend:** SOS UI + Video call
 
----
-
 #### 3. Doctor List & Profiles (Priority: 🟡 High)
 **Impact:** Core telemed functionality  
 **Estimated Time:** 1 week
 
-- [ ] **[PRIORITY: DAY 1]** Browse doctors list
-- [ ] **[PRIORITY: DAY 1]** Filter by specialty (Psychiatrist, Psychologist, Counselor)
-- [ ] **[PRIORITY: DAY 1]** Doctor profile page
+- [x] [PRIORITY: DAY 1] Browse doctors list
+- [x] [PRIORITY: DAY 1] Filter by specialty (Psychiatrist, Psychologist, Counselor)
+- [x] [PRIORITY: DAY 1] Doctor profile page
 - [ ] Official badge display
 - [ ] Doctor availability status
 - [ ] Doctor ratings/reviews

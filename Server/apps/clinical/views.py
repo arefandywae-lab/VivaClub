@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -74,12 +75,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Appointment.objects.filter(doctor=user)
         return Appointment.objects.filter(patient=user)
 
+    @transaction.atomic
     def perform_create(self, serializer):
-        slot = serializer.validated_data['slot']
+        slot_id = self.request.data.get('slot')
+        # Lock the slot row for update to prevent race conditions
+        slot = TimeSlot.objects.select_for_update().get(id=slot_id)
+        
         if slot.is_reserved:
             raise serializers.ValidationError("This slot is already reserved.")
         
-        # Mark slot as reserved
+        # Mark slot as reserved atomically
         slot.is_reserved = True
         slot.save()
         
