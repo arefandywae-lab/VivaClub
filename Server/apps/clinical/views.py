@@ -73,6 +73,19 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
             "my_stats": stats
         })
 
+    @action(detail=False, methods=['post'])
+    def toggle_online(self, request):
+        if request.user.role != User.Role.DOCTOR:
+             return Response({"error": "Only doctors can toggle online status."}, status=status.HTTP_403_FORBIDDEN)
+        
+        request.user.is_online = not request.user.is_online
+        request.user.save()
+        
+        return Response({
+            "is_online": request.user.is_online,
+            "status": "Online" if request.user.is_online else "Offline"
+        })
+
 class TimeSlotViewSet(viewsets.ModelViewSet):
     serializer_class = TimeSlotSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -127,6 +140,26 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             print(f"Failed to send booking notification: {e}")
+
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        appointment = self.get_object()
+        if request.user != appointment.doctor:
+             return Response({"error": "Only the assigned doctor can complete the appointment."}, status=status.HTTP_403_FORBIDDEN)
+        
+        appointment.status = Appointment.Status.COMPLETED
+        appointment.save()
+        
+        # Notify Patient to Review
+        from apps.utils.notifications import send_push_notification
+        send_push_notification(
+            user=appointment.patient,
+            title="Consultation Completed",
+            body=f"Your session with {request.user.display_name} has ended. Please rate your experience!",
+            data={"type": "REVIEW_REQUEST", "doctor_id": str(request.user.id), "appointment_id": str(appointment.id)}
+        )
+        
+        return Response({"status": "Appointment marked as completed"})
 
     @action(detail=True, methods=['get'])
     def join(self, request, pk=None):
@@ -223,6 +256,25 @@ class SOSCallViewSet(viewsets.ModelViewSet):
             "room_name": room_name,
             "livekit_token": token
         })
+
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        sos_call = self.get_object()
+        if request.user != sos_call.assigned_doctor:
+             return Response({"error": "Only the assigned doctor can complete the SOS call."}, status=status.HTTP_403_FORBIDDEN)
+        
+        sos_call.status = SOSCall.Status.RESOLVED
+        sos_call.save()
+        
+        # Notify Patient
+        from apps.utils.notifications import send_push_notification
+        send_push_notification(
+            user=sos_call.patient,
+            title="SOS Resolved",
+            body="We hope you are feeling better. Please take care!",
+        )
+        
+        return Response({"status": "SOS call marked as resolved"})
 
     @action(detail=False, methods=['get'])
     def my_position(self, request):

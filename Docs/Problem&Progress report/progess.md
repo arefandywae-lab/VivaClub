@@ -196,8 +196,9 @@
 **Impact:** Life-saving feature, social impact  
 **Estimated Time:** 1 week
 
-- [ ] **[PRIORITY: DAY 2]** SOS button (unlocked by PHQ-9 > 19)
-- [ ] **[PRIORITY: DAY 2]** Priority queue to standby doctor
+- [x] **[PRIORITY: DAY 2]** SOS button (Backend & Logic)
+- [x] **[PRIORITY: DAY 2]** Priority queue with Position Status API
+- [ ] [PRIORITY: DAY 2] SOS button UI
 - [ ] Free 15-min consultation
 - [ ] Cooldown system (30 days / 1 per month)
 - [ ] SOS call history
@@ -214,10 +215,10 @@
 - [x] [PRIORITY: DAY 1] Browse doctors list
 - [x] [PRIORITY: DAY 1] Filter by specialty (Psychiatrist, Psychologist, Counselor)
 - [x] [PRIORITY: DAY 1] Doctor profile page
-- [ ] Official badge display
-- [ ] Doctor availability status
-- [ ] Doctor ratings/reviews
-- [ ] Search doctors
+- [x] Official badge display
+- [x] Doctor availability status
+- [x] Doctor ratings/reviews (Backend Aggregation)
+- [x] Search doctors API
 
 **Database:** `ProfessionalProfile` model (Verified)  
 **APIs Needed:** Done (Verified)  
@@ -233,9 +234,9 @@
 - [x] Book appointment / Reserve (Backend API & Transaction logic)
 - [x] 100% deposit payment (Logic simulated in confirm API)
 - [ ] **[PRIORITY: DAY 2]** Appointment Booking UI flow in Flutter
-- [ ] Cancellation (24h refund policy)
-- [ ] Appointment reminders
-- [ ] Appointment history
+- [x] Cancellation (24h refund policy API)
+- [x] Appointment reminders (Backend Background Task)
+- [x] Appointment history API
 - [ ] Reschedule appointment
 
 **Database:** New `Appointment` model  
