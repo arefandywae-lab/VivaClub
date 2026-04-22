@@ -5,9 +5,12 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class UserMinimalSerializer(serializers.ModelSerializer):
+    avg_rating = serializers.FloatField(read_only=True)
+    review_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'display_name', 'specialty', 'is_online']
+        fields = ['id', 'display_name', 'specialty', 'is_online', 'avg_rating', 'review_count']
 
 class AssessmentSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import transaction, models
 from rest_framework import viewsets, permissions, status, filters, serializers
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -35,7 +35,10 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['display_name', 'specialty']
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().annotate(
+            avg_rating=models.Avg('received_reviews__rating'),
+            review_count=models.Count('received_reviews', distinct=True)
+        )
         specialty = self.request.query_params.get('specialty')
         is_online = self.request.query_params.get('is_online')
         
@@ -43,8 +46,32 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(specialty__icontains=specialty)
         if is_online is not None:
             queryset = queryset.filter(is_online=is_online.lower() == 'true')
-            
         return queryset
+
+    @action(detail=False, methods=['get'])
+    def dashboard(self, request):
+        if request.user.role != User.Role.DOCTOR:
+             return Response({"error": "Only doctors can access the dashboard."}, status=status.HTTP_403_FORBIDDEN)
+        
+        today = timezone.now().date()
+        today_appointments = Appointment.objects.filter(
+            doctor=request.user,
+            slot__start_time__date=today
+        ).count()
+        
+        waiting_sos = SOSCall.objects.filter(status=SOSCall.Status.WAITING).count()
+        
+        # Get doctor's own stats
+        stats = User.objects.filter(id=request.user.id).annotate(
+            avg_rating=models.Avg('received_reviews__rating'),
+            review_count=models.Count('received_reviews', distinct=True)
+        ).values('avg_rating', 'review_count').first()
+
+        return Response({
+            "today_appointments_count": today_appointments,
+            "waiting_sos_count": waiting_sos,
+            "my_stats": stats
+        })
 
 class TimeSlotViewSet(viewsets.ModelViewSet):
     serializer_class = TimeSlotSerializer
@@ -164,6 +191,15 @@ class SOSCallViewSet(viewsets.ModelViewSet):
             
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['get'])
+    def list_waiting(self, request):
+        if request.user.role != User.Role.DOCTOR:
+             return Response({"error": "Only doctors can view the SOS waiting list."}, status=status.HTTP_403_FORBIDDEN)
+             
+        waiting_calls = SOSCall.objects.filter(status=SOSCall.Status.WAITING).order_by('-priority_score', 'created_at')
+        serializer = self.get_serializer(waiting_calls, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
         sos_call = self.get_object()
@@ -186,6 +222,29 @@ class SOSCallViewSet(viewsets.ModelViewSet):
             "status": "SOS Accepted",
             "room_name": room_name,
             "livekit_token": token
+        })
+
+    @action(detail=False, methods=['get'])
+    def my_position(self, request):
+        user = request.user
+        active_call = SOSCall.objects.filter(patient=user, status=SOSCall.Status.WAITING).first()
+        
+        if not active_call:
+            return Response({"position": 0, "message": "No active SOS call."})
+        
+        # Count calls that should be handled before this one
+        position = SOSCall.objects.filter(
+            status=SOSCall.Status.WAITING
+        ).filter(
+            models.Q(priority_score__gt=active_call.priority_score) | 
+            models.Q(priority_score=active_call.priority_score, created_at__lt=active_call.created_at)
+        ).count() + 1
+        
+        return Response({
+            "position": position,
+            "sos_id": str(active_call.id),
+            "priority_score": active_call.priority_score,
+            "created_at": active_call.created_at
         })
 
 class DoctorReviewViewSet(viewsets.ModelViewSet):
