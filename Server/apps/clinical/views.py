@@ -89,6 +89,35 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         slot.save()
         
         serializer.save(patient=self.request.user, doctor=slot.doctor)
+        
+        # Notify Patient
+        try:
+            from apps.utils.notifications import send_push_notification
+            send_push_notification(
+                user=self.request.user,
+                title="Appointment Confirmed",
+                body=f"Your appointment with {slot.doctor.display_name} is confirmed for {slot.start_time.strftime('%Y-%m-%d %H:%M')}."
+            )
+        except Exception as e:
+            print(f"Failed to send booking notification: {e}")
+
+    @action(detail=True, methods=['get'])
+    def join(self, request, pk=None):
+        appointment = self.get_object()
+        # Check if user is part of the appointment
+        if request.user != appointment.patient and request.user != appointment.doctor:
+             return Response({"error": "Unauthorized access to this appointment."}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Optional: Check if time is appropriate (e.g., 5 mins before)
+        
+        from apps.utils.livekit_utils import generate_livekit_token, get_appointment_room_name
+        room_name = get_appointment_room_name(appointment)
+        token = generate_livekit_token(room_name, str(request.user.id), request.user.display_name)
+        
+        return Response({
+            "room_name": room_name,
+            "livekit_token": token
+        })
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
@@ -125,7 +154,39 @@ class SOSCallViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save(patient=request.user, priority_score=priority_score)
+        
+        # Notify Doctors
+        try:
+            from apps.utils.notifications import notify_sos_to_doctors
+            notify_sos_to_doctors(serializer.instance)
+        except Exception as e:
+            print(f"Failed to send SOS notification: {e}")
+            
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        sos_call = self.get_object()
+        if request.user.role != User.Role.DOCTOR:
+             return Response({"error": "Only doctors can accept SOS calls."}, status=status.HTTP_403_FORBIDDEN)
+        
+        if sos_call.status != SOSCall.Status.WAITING:
+             return Response({"error": "This SOS call is already being handled."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        sos_call.status = SOSCall.Status.ONGOING
+        sos_call.assigned_doctor = request.user
+        sos_call.save()
+        
+        # Generate LiveKit Token
+        from apps.utils.livekit_utils import generate_livekit_token, get_sos_room_name
+        room_name = get_sos_room_name(sos_call)
+        token = generate_livekit_token(room_name, str(request.user.id), request.user.display_name)
+        
+        return Response({
+            "status": "SOS Accepted",
+            "room_name": room_name,
+            "livekit_token": token
+        })
 
 class DoctorReviewViewSet(viewsets.ModelViewSet):
     serializer_class = DoctorReviewSerializer
