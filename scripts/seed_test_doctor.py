@@ -37,9 +37,9 @@ def seed_doctor():
     log_msg = "Created" if created else "Updated"
     print(f"✅ {log_msg} verified doctor: {doctor.username}")
 
-    # Create Time Slots for the next 3 days
+    # Create Time Slots for the next 20 days
     now = timezone.now()
-    for i in range(1, 4):
+    for i in range(1, 21):
         start_time = (now + timedelta(days=i)).replace(hour=10, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=1)
         

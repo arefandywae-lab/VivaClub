@@ -41,17 +41,15 @@ def run_stress_test():
     print(f"✅ Logged in {len(tokens)} users.")
 
     # 1. Get an available slot
-    # Note: We need a fresh slot. Let's assume we know one or we pick from the list.
-    resp = requests.get(f"{BASE_URL}/clinical/timeslots/?doctor_id=all") # We might need to adjust this
-    # Let's just pick the first available doctor's first slot
-    doctors_resp = requests.get(f"{BASE_URL}/clinical/doctors/")
+    headers = {"Authorization": f"Bearer {tokens[0]}"}
+    doctors_resp = requests.get(f"{BASE_URL}/clinical/doctors/", headers=headers)
     doctors = doctors_resp.json()
     if not doctors:
-        print("❌ No doctors found.")
+        print(f"❌ No doctors found. Response: {doctors_resp.text}")
         return
 
     doctor_id = doctors[0]['id']
-    slots_resp = requests.get(f"{BASE_URL}/clinical/timeslots/?doctor_id={doctor_id}")
+    slots_resp = requests.get(f"{BASE_URL}/clinical/timeslots/?doctor_id={doctor_id}", headers=headers)
     slots = slots_resp.json()
     if not slots:
         print(f"❌ No slots found for doctor {doctor_id}.")
