@@ -36,8 +36,8 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset().annotate(
-            avg_rating=models.Avg('received_reviews__rating'),
-            review_count=models.Count('received_reviews', distinct=True)
+            avg_rating=models.Avg('reviews__rating'),
+            review_count=models.Count('reviews', distinct=True)
         )
         specialty = self.request.query_params.get('specialty')
         is_online = self.request.query_params.get('is_online')
@@ -63,8 +63,8 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Get doctor's own stats
         stats = User.objects.filter(id=request.user.id).annotate(
-            avg_rating=models.Avg('received_reviews__rating'),
-            review_count=models.Count('received_reviews', distinct=True)
+            avg_rating=models.Avg('reviews__rating'),
+            review_count=models.Count('reviews', distinct=True)
         ).values('avg_rating', 'review_count').first()
 
         return Response({
