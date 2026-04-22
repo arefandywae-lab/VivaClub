@@ -6,12 +6,27 @@ User = get_user_model()
 
 from apps.utils.ghost_names import generate_ghost_name
 
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user_id'] = self.user.id
+        data['role'] = self.user.role
+        data['display_name'] = self.user.display_name or self.user.username
+        data['is_staff'] = self.user.is_staff
+        return data
+
 class UserSerializer(serializers.ModelSerializer):
     ghost_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number', 'role', 'display_name', 'license_id', 'specialty', 'verified_at', 'is_online', 'is_staff', 'is_active', 'ghost_profile']
+        fields = [
+            'id', 'username', 'email', 'phone_number', 'role', 
+            'display_name', 'license_id', 'specialty', 'verified_at', 
+            'is_online', 'is_staff', 'is_active', 'ghost_profile'
+        ]
         read_only_fields = ['id', 'role', 'verified_at', 'is_online', 'is_staff', 'is_active', 'ghost_profile']
 
     def get_ghost_profile(self, obj):

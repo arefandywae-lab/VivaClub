@@ -23,3 +23,11 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender} -> {self.room_id}: {self.content[:20]}"
+
+class ReadReceipt(models.Model):
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='read_receipts')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    read_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('message', 'user')

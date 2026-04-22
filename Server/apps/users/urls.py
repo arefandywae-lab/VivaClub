@@ -2,12 +2,14 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import AllowAny
 from .views import RegisterView, ProfileView, AdminUserListView, AdminUserActionView, AdminCleanupTestDataView
+from .serializers import CustomTokenObtainPairSerializer
 
 
 # SimpleJWT views inherit DRF global DEFAULT_PERMISSION_CLASSES (IsAuthenticated).
 # Wrap them so login/refresh are publicly accessible.
 class PublicTokenObtainPairView(TokenObtainPairView):
     permission_classes = (AllowAny,)
+    serializer_class = CustomTokenObtainPairSerializer
 
 class PublicTokenRefreshView(TokenRefreshView):
     permission_classes = (AllowAny,)

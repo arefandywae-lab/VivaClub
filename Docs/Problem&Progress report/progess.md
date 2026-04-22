@@ -13,8 +13,9 @@
 | **Telemed (Patient)** | 3 | 12 | 25% | 🟡 Backend Ready |
 | **Doctor Side** | 1 | 10 | 10% | 🟡 Backend Foundation |
 | **Safety & Moderation** | 5 | 8 | 62% | 🟡 In Progress |
+| **Infrastructure & Security** | 4 | 6 | 66% | 🟡 Optimizing for Thai Mobile |
 | **Monetization** | 0 | 8 | 0% | 🔴 Not Started |
-| **TOTAL** | **24** | **53** | **45%** | 🟡 In Progress |
+| **TOTAL** | **25** | **55** | **45%** | 🟡 In Progress |
 
 
 ---
@@ -180,7 +181,7 @@
 - [x] PHQ-9 questionnaire (Backend Model & API)
 - [x] Score calculation algorithm (Backend Logic)
 - [x] Severity level classification (Backend Logic)
-- [ ] PHQ-9 UI Flow in Flutter
+- [ ] **[PRIORITY: DAY 1]** PHQ-9 UI Flow in Flutter
 - [ ] Assessment history UI
 - [ ] Unlock SOS button (Logic exists, needs UI)
 - [ ] Daily check-in reminder
@@ -195,8 +196,8 @@
 **Impact:** Life-saving feature, social impact  
 **Estimated Time:** 1 week
 
-- [ ] SOS button (unlocked by PHQ-9 > 19)
-- [ ] Priority queue to standby doctor
+- [ ] **[PRIORITY: DAY 2]** SOS button (unlocked by PHQ-9 > 19)
+- [ ] **[PRIORITY: DAY 2]** Priority queue to standby doctor
 - [ ] Free 15-min consultation
 - [ ] Cooldown system (30 days / 1 per month)
 - [ ] SOS call history
@@ -212,9 +213,9 @@
 **Impact:** Core telemed functionality  
 **Estimated Time:** 1 week
 
-- [ ] Browse doctors list
-- [ ] Filter by specialty (Psychiatrist, Psychologist, Counselor)
-- [ ] Doctor profile page
+- [ ] **[PRIORITY: DAY 1]** Browse doctors list
+- [ ] **[PRIORITY: DAY 1]** Filter by specialty (Psychiatrist, Psychologist, Counselor)
+- [ ] **[PRIORITY: DAY 1]** Doctor profile page
 - [ ] Official badge display
 - [ ] Doctor availability status
 - [ ] Doctor ratings/reviews
@@ -233,7 +234,7 @@
 - [x] View doctor's available time slots (Backend API)
 - [x] Book appointment / Reserve (Backend API & Transaction logic)
 - [x] 100% deposit payment (Logic simulated in confirm API)
-- [ ] Appointment Booking UI flow in Flutter
+- [ ] **[PRIORITY: DAY 2]** Appointment Booking UI flow in Flutter
 - [ ] Cancellation (24h refund policy)
 - [ ] Appointment reminders
 - [ ] Appointment history
@@ -249,12 +250,12 @@
 **Impact:** Core telemed functionality  
 **Estimated Time:** 1 week
 
-- [ ] Video call interface
+- [ ] **[PRIORITY: DAY 3]** Video call interface
 - [ ] Camera on/off
 - [ ] Mic on/off
 - [ ] Screen share (optional)
 - [ ] Call timer
-- [ ] Pay-per-minute billing
+- [ ] **[CUT]** Pay-per-minute billing
 - [ ] End call
 - [ ] Call quality indicator
 
@@ -285,12 +286,12 @@
 **Impact:** Monetization foundation  
 **Estimated Time:** 1 week
 
-- [ ] Viva Coins balance display
-- [ ] Top-up interface
-- [ ] Payment gateway integration (Stripe/Omise)
-- [ ] Transaction history
-- [ ] Refund management
-- [ ] Low balance warning
+- [ ] **[CUT]** Viva Coins balance display
+- [ ] **[CUT]** Top-up interface
+- [ ] **[CUT]** Payment gateway integration (Stripe/Omise)
+- [ ] **[CUT]** Transaction history
+- [ ] **[CUT]** Refund management
+- [ ] **[CUT]** Low balance warning
 
 **Database:** New `Wallet`, `Transaction` models  
 **APIs Needed:** 6 endpoints  
@@ -302,12 +303,12 @@
 **Impact:** Recurring revenue  
 **Estimated Time:** 1 week
 
-- [ ] Subscription plans display
-- [ ] Subscribe/Unsubscribe
-- [ ] Free credits allocation
-- [ ] Priority queue badge
-- [ ] Exclusive content access
-- [ ] Auto-renewal management
+- [ ] **[CUT]** Subscription plans display
+- [ ] **[CUT]** Subscribe/Unsubscribe
+- [ ] **[CUT]** Free credits allocation
+- [ ] **[CUT]** Priority queue badge
+- [ ] **[CUT]** Exclusive content access
+- [ ] **[CUT]** Auto-renewal management
 
 **Database:** New `Subscription` model  
 **APIs Needed:** 4 endpoints  
@@ -319,11 +320,11 @@
 **Impact:** User acquisition  
 **Estimated Time:** 3-5 days
 
-- [ ] Referral code generation
-- [ ] Share referral link
-- [ ] Track referrals
-- [ ] Referral rewards (Coins)
-- [ ] Leaderboard (optional)
+- [ ] **[CUT]** Referral code generation
+- [ ] **[CUT]** Share referral link
+- [ ] **[CUT]** Track referrals
+- [ ] **[CUT]** Referral rewards (Coins)
+- [ ] **[CUT]** Leaderboard (optional)
 
 ---
 
@@ -331,10 +332,10 @@
 **Impact:** User value  
 **Estimated Time:** 3-5 days
 
-- [ ] Consultation history
-- [ ] Doctor notes (if shared)
-- [ ] Prescriptions
-- [ ] Download records (PDF)
+- [ ] **[CUT]** Consultation history
+- [ ] **[CUT]** Doctor notes (if shared)
+- [ ] **[CUT]** Prescriptions
+- [ ] **[CUT]** Download records (PDF)
 
 ---
 
@@ -342,10 +343,10 @@
 **Impact:** Safety  
 **Estimated Time:** 2-3 days
 
-- [ ] Add emergency contacts
-- [ ] Auto-notify on SOS call
-- [ ] Crisis hotline numbers display
-- [ ] Quick dial emergency
+- [ ] **[CUT]** Add emergency contacts
+- [ ] **[CUT]** Auto-notify on SOS call
+- [ ] **[CUT]** Crisis hotline numbers display
+- [ ] **[CUT]** Quick dial emergency
 
 ---
 
@@ -356,7 +357,7 @@
 #### 1. Doctor Login & Auth (Priority: 🔴 **CRITICAL**)
 **Estimated Time:** 1 week
 
-- [ ] Separate doctor login
+- [ ] **[PRIORITY: DAY 2]** Separate doctor login
 - [ ] Doctor registration
 - [ ] License verification upload
 - [ ] Admin approval workflow
@@ -367,9 +368,9 @@
 #### 2. Doctor Dashboard (Priority: 🔴 **CRITICAL**)
 **Estimated Time:** 1 week
 
-- [ ] Today's appointments
+- [ ] **[PRIORITY: DAY 2]** Today's appointments
 - [ ] Upcoming appointments
-- [ ] SOS queue (standby doctors)
+- [ ] **[PRIORITY: DAY 2]** SOS queue (standby doctors)
 - [ ] Earnings summary
 - [ ] Quick stats (patients seen, hours worked)
 - [ ] Performance metrics
@@ -404,7 +405,7 @@
 #### 5. Exam Room - Video Call (Priority: 🔴 **CRITICAL**)
 **Estimated Time:** 1 week
 
-- [ ] Video call interface
+- [ ] **[PRIORITY: DAY 3]** Video call interface
 - [ ] Patient info sidebar
 - [ ] Take notes during call
 - [ ] Extend time (for SOS calls)
@@ -545,7 +546,7 @@
 #### 6. Admin Panel (Priority: 🟡 High)
 **Estimated Time:** 1 week
 
-- [x] Review reports (Basic API)
+- [ ] **[PRIORITY: DAY 1]** Advanced Analytics Dashboard (Web)
 - [ ] Ban/Unban users
 - [ ] View trust scores
 - [ ] Mod management
@@ -695,6 +696,7 @@
 - ✅ **Channels WebSocket Fix:** Resolved Redis tuple error that broke real-time chat.
 - ✅ **Bot Audio:** Solved stuttering by switching to `time.monotonic()` 10ms pacing.
 - ✅ **LiveKit Integration Docs:** Completed architecture mapping (Django ↔ Redis ↔ LiveKit).
+- 🟡 **Thai Mobile Network Optimization:** Identified Path MTU Blackhole issue on AIS/True/dtac; implementing TURN over TCP and ICMPv6 Packet Too Big fixes.
 
 **Next High-Impact Tasks:**
 1. **Anonymous Subscription** (1-2 weeks) - Core differentiator ⭐

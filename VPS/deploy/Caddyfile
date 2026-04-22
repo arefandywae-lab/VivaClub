@@ -35,3 +35,9 @@ livekit.vivaclubs.site {
 dashboard.vivaclubs.site {
     reverse_proxy vivaclub_dashboard:3000
 }
+
+# 4. Karatos Gait Analysis (Managed from ~/GaitAnalysis/vps-setup/)
+gait.vivaclubs.site {
+    # Mediasoup Signaling (Socket.io)
+    reverse_proxy 217.216.108.16:8085
+}
