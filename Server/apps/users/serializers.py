@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from apps.community.models import GhostProfile
+from .models import DeviceToken
 
 User = get_user_model()
 
