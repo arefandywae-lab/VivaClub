@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/auth/', include('apps.users.urls')),
     path('api/bookings/', include('apps.bookings.urls')),
     path('api/clinical/', include('apps.clinical.urls')),
+    path('api/chat/', include('apps.chat.urls')),
     path('api/community/', include('apps.community.urls')),
     path('health/', lambda request: JsonResponse({'status': 'ok'}), name='health'),
     path('db-test/', db_test_view, name='db_test'),

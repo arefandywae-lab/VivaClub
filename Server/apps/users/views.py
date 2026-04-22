@@ -99,4 +99,21 @@ class AdminCleanupTestDataView(APIView):
             "deleted_ghost_profiles": ghosts_count,
         })
 
+from rest_framework import viewsets
+from .models import DeviceToken
+from .serializers import DeviceTokenSerializer
+
+class DeviceTokenViewSet(viewsets.ModelViewSet):
+    serializer_class = DeviceTokenSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return DeviceToken.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Update if token already exists for another user (theft prevention or device handoff)
+        token = self.request.data.get('token')
+        DeviceToken.objects.filter(token=token).delete()
+        serializer.save(user=self.request.user)
+
 

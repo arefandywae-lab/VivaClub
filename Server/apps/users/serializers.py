@@ -75,3 +75,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         
         return user
+
+class DeviceTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeviceToken
+        fields = ['id', 'user', 'token', 'device_type', 'created_at', 'last_used']
+        read_only_fields = ['id', 'user', 'created_at', 'last_used']
