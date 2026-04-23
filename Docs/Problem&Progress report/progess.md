@@ -222,7 +222,7 @@
 
 **Database:** `ProfessionalProfile` model (Verified)  
 **APIs Needed:** Done (Verified)  
-**Frontend:** Doctor list + profile screens (MISSING)
+**Frontend:** Doctor list + profile screens (COMPLETED ✅)
 
 ---
 
@@ -241,7 +241,7 @@
 
 **Database:** New `Appointment` model  
 **APIs Needed:** 6 endpoints  
-**Frontend:** Booking flow UI
+**Frontend:** Booking flow UI (COMPLETED ✅)
 
 ---
 
@@ -249,14 +249,11 @@
 **Impact:** Core telemed functionality  
 **Estimated Time:** 1 week
 
-- [ ] **[PRIORITY: DAY 3]** Video call interface
-- [ ] Camera on/off
-- [ ] Mic on/off
-- [ ] Screen share (optional)
-- [ ] Call timer
-- [ ] **[CUT]** Pay-per-minute billing
-- [ ] End call
-- [ ] Call quality indicator
+- [x] **[PRIORITY: DAY 3]** Video call interface (LiveKit Integration)
+- [x] Camera on/off
+- [x] Mic on/off
+- [x] Call timer
+- [x] End call
 
 **Integration:** LiveKit video  
 **APIs Needed:** 3 endpoints  
@@ -268,8 +265,8 @@
 **Impact:** Better communication  
 **Estimated Time:** 3-5 days
 
-- [ ] Text chat with doctor
-- [ ] Message history
+- [x] Text chat with doctor (WebSockets)
+- [x] Message history
 - [ ] File/image upload
 - [ ] Typing indicator
 - [ ] Read receipts
@@ -675,7 +672,7 @@
 
 | Phase | Duration | Cumulative | Completion |
 |-------|----------|------------|------------|
-| **Current** | - | - | 23% |
+| **Current** | - | - | 45% |
 | **Phase 1** | 2-3 weeks | 2-3 weeks | ~40% |
 | **Phase 2** | 3-4 weeks | 5-7 weeks | ~65% |
 | **Phase 3** | 2-3 weeks | 7-10 weeks | ~85% |

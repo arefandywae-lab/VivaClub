@@ -2,7 +2,11 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import AllowAny
-from .views import RegisterView, ProfileView, AdminUserListView, AdminUserActionView, AdminCleanupTestDataView, DeviceTokenViewSet
+from .views import (
+    RegisterView, ProfileView, AdminUserListView, AdminUserActionView, 
+    AdminCleanupTestDataView, DeviceTokenViewSet, ForgotPasswordView, 
+    ResetPasswordView, VerifyEmailView
+)
 from .serializers import CustomTokenObtainPairSerializer
 
 router = DefaultRouter()
@@ -23,6 +27,9 @@ urlpatterns = router.urls + [
     path('login/', PublicTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', PublicTokenRefreshView.as_view(), name='token_refresh'),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
+    path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
+    path('verify-email/', VerifyEmailView.as_view(), name='verify_email'),
     path('admin/users/', AdminUserListView.as_view(), name='admin_users'),
     path('admin/users/<uuid:pk>/<str:action>/', AdminUserActionView.as_view(), name='admin_user_action'),
     path('admin/cleanup-test-data/', AdminCleanupTestDataView.as_view(), name='admin_cleanup_test_data'),

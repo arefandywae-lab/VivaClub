@@ -26,9 +26,9 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'phone_number', 'role', 
             'display_name', 'license_id', 'specialty', 'verified_at', 
-            'is_online', 'is_staff', 'is_active', 'ghost_profile'
+            'is_online', 'is_staff', 'is_active', 'is_email_verified', 'ghost_profile'
         ]
-        read_only_fields = ['id', 'role', 'verified_at', 'is_online', 'is_staff', 'is_active', 'ghost_profile']
+        read_only_fields = ['id', 'role', 'verified_at', 'is_online', 'is_staff', 'is_active', 'is_email_verified', 'ghost_profile']
 
     def get_ghost_profile(self, obj):
         # Return simple ghost profile info
@@ -82,3 +82,10 @@ class DeviceTokenSerializer(serializers.ModelSerializer):
         model = DeviceToken
         fields = ['id', 'user', 'token', 'device_type', 'created_at', 'last_used']
         read_only_fields = ['id', 'user', 'created_at', 'last_used']
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class ResetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8)

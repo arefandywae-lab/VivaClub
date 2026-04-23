@@ -12,6 +12,14 @@ import '../../features/community/presentation/screens/create_room_screen.dart';
 import '../../features/community/presentation/screens/live_room_screen.dart';
 import '../../features/home/presentation/screens/dashboard_screen.dart';
 import '../../features/clinical/presentation/screens/telemed_screen.dart';
+import '../../features/clinical/presentation/screens/assessment_screen.dart';
+import '../../features/clinical/presentation/screens/assessment_result_screen.dart';
+import '../../features/clinical/presentation/screens/sos_waiting_screen.dart';
+import '../../features/clinical/presentation/screens/doctor_list_screen.dart';
+import '../../features/clinical/presentation/screens/doctor_profile_screen.dart';
+import '../../features/clinical/presentation/screens/video_call_screen.dart';
+import '../../features/clinical/presentation/screens/my_appointments_screen.dart';
+import '../../features/chat/presentation/screens/chat_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/community/presentation/screens/following_list_screen.dart';
 import '../../features/community/presentation/bloc/following_bloc.dart';
@@ -110,6 +118,63 @@ class AppRouter {
           create: (_) => FollowingBloc(FollowingRepository(DioClient())),
           child: const FollowingListScreen(),
         ),
+      ),
+      GoRoute(
+        path: '/clinical/assessment',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AssessmentScreen(),
+      ),
+      GoRoute(
+        path: '/clinical/result',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AssessmentResultScreen(),
+      ),
+      GoRoute(
+        path: '/clinical/sos-waiting',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SOSWaitingScreen(),
+      ),
+      GoRoute(
+        path: '/clinical/doctors',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DoctorListScreen(),
+      ),
+      GoRoute(
+        path: '/clinical/doctor-profile',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final doctor = state.extra as Map<String, dynamic>;
+          return DoctorProfileScreen(doctor: doctor);
+        },
+      ),
+      GoRoute(
+        path: '/clinical/video-call',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return VideoCallScreen(
+            url: extra['url'],
+            token: extra['token'],
+            roomName: extra['room_name'],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/chat',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return ChatScreen(
+            roomId: extra['room_id'],
+            token: extra['token'],
+            title: extra['title'],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/clinical/my-appointments',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const MyAppointmentsScreen(),
       ),
 
       // Screens WITH Bottom Nav (ShellRoute)

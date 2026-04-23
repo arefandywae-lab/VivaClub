@@ -64,6 +64,10 @@ dependencies:
 
   # Media
   livekit_client: ^2.0.5
+  
+  # WebSockets
+  web_socket_channel: ^3.0.1
+  collection: ^1.18.0
 
 dev_dependencies:
   flutter_test:

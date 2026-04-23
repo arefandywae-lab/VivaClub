@@ -76,4 +76,18 @@ class AuthRepository {
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
   }
+
+  Future<void> forgotPassword(String emailOrPhone) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.forgotPassword,
+        data: {'identifier': emailOrPhone},
+      );
+    } catch (e) {
+      if (e is DioException) {
+        throw e.response?.data['detail'] ?? 'Failed to send reset link';
+      }
+      throw e.toString();
+    }
+  }
 }

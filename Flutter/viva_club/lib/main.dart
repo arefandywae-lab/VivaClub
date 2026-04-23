@@ -11,6 +11,10 @@ import 'features/community/presentation/bloc/room_bloc.dart';
 import 'features/profile/data/profile_repository.dart';
 import 'features/profile/presentation/bloc/profile_bloc.dart';
 import 'features/community/data/livekit_room_service.dart';
+import 'features/clinical/data/clinical_repository.dart';
+import 'features/clinical/presentation/bloc/clinical_bloc.dart';
+import 'features/chat/data/chat_repository.dart';
+import 'features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -20,18 +24,39 @@ void main() {
   final authRepository = AuthRepository();
   final authBloc = AuthBloc(authRepository: authRepository)
     ..add(AuthCheckRequested());
+  
+  final clinicalRepository = ClinicalRepository();
+  final clinicalBloc = ClinicalBloc(clinicalRepository: clinicalRepository);
 
-  runApp(VivaClubApp(authRepository: authRepository, authBloc: authBloc));
+  final chatRepository = ChatRepository();
+  final chatBloc = ChatBloc(chatRepository: chatRepository);
+
+  runApp(VivaClubApp(
+    authRepository: authRepository, 
+    authBloc: authBloc,
+    clinicalRepository: clinicalRepository,
+    clinicalBloc: clinicalBloc,
+    chatRepository: chatRepository,
+    chatBloc: chatBloc,
+  ));
 }
 
 class VivaClubApp extends StatelessWidget {
   final AuthRepository authRepository;
   final AuthBloc authBloc;
+  final ClinicalRepository clinicalRepository;
+  final ClinicalBloc clinicalBloc;
+  final ChatRepository chatRepository;
+  final ChatBloc chatBloc;
 
   const VivaClubApp({
     super.key,
     required this.authRepository,
     required this.authBloc,
+    required this.clinicalRepository,
+    required this.clinicalBloc,
+    required this.chatRepository,
+    required this.chatBloc,
   });
 
   @override
@@ -47,6 +72,8 @@ class VivaClubApp extends StatelessWidget {
         return MultiRepositoryProvider(
           providers: [
             RepositoryProvider.value(value: authRepository),
+            RepositoryProvider.value(value: clinicalRepository),
+            RepositoryProvider.value(value: chatRepository),
             RepositoryProvider(create: (context) => CommunityRepository()),
             RepositoryProvider(create: (context) => ProfileRepository()),
           ],
@@ -59,6 +86,8 @@ class VivaClubApp extends StatelessWidget {
               ),
               // Use BlocProvider.value to provide the existing instance
               BlocProvider.value(value: authBloc),
+              BlocProvider.value(value: clinicalBloc),
+              BlocProvider.value(value: chatBloc),
               BlocProvider(
                 create: (context) => RoomBloc(
                   communityRepository: context.read<CommunityRepository>(),
@@ -73,6 +102,8 @@ class VivaClubApp extends StatelessWidget {
             child: MaterialApp.router(
               title: 'Viva Club',
               theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: ThemeMode.system, // Set to system to allow toggle/default behavior
               routerConfig: appRouter.router,
               debugShowCheckedModeBanner: false,
             ),

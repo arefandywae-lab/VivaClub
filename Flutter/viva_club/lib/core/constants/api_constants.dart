@@ -8,6 +8,7 @@ class ApiConstants {
   static const String login = '/api/auth/login/';
   static const String register = '/api/auth/register/';
   static const String profile = '/api/auth/profile/';
+  static const String forgotPassword = '/api/auth/forgot-password/';
 
   // Community Endpoints
   static const String rooms = '/api/community/rooms/';
