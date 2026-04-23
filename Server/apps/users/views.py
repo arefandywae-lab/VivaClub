@@ -2,10 +2,11 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.conf import settings
+import uuid
 from .serializers import RegisterSerializer, UserSerializer, ForgotPasswordSerializer, ResetPasswordSerializer
 
 User = get_user_model()
@@ -147,19 +148,34 @@ class ForgotPasswordView(APIView):
             email = serializer.validated_data['email']
             user = User.objects.filter(email=email).first()
             if user:
-                token = get_random_string(64)
+                token = uuid.uuid4().hex
                 user.email_verification_token = token
                 user.save()
                 
-                send_mail(
-                    'VivaClub Password Reset',
-                    f'You requested a password reset. Use this token: {token}\n\nOr click: https://vivaclubs.site/reset-password?token={token}',
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email],
-                    fail_silently=True,
-                )
-            return Response({"message": "If an account exists with this email, a reset link has been sent."})
-        return Response(serializer.errors, status=400)
+                reset_link = f"https://vivaclubs.site/api/auth/reset-password-page/?token={token}"
+                subject = "VivaClub - Password Reset Request"
+                message = f"You requested a password reset. Please use the link below to create a new password:\n\n{reset_link}\n\nIf you did not request this, please ignore this email."
+                
+                try:
+                    send_mail(
+                        subject,
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+            return Response({"message": "If an account with that email exists, a reset link has been sent."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ResetPasswordPageView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        token = request.query_params.get('token')
+        return render(request, 'reset_password.html', {'token': token})
 
 class ResetPasswordView(APIView):
     permission_classes = [permissions.AllowAny]
