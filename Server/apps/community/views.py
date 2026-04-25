@@ -120,21 +120,21 @@ class RoomViewSet(viewsets.ModelViewSet):
         from datetime import timedelta
         from django.db.models import Q
         # Cleanup rooms:
-        # 1. Truly empty rooms (count=0) older than 5 minutes
-        # 2. Stuck rooms (count=1) older than 15 minutes (likely host disconnected)
+        # 1. Truly empty rooms (count=0) older than 65 seconds
+        # 2. Stuck rooms (count=1) older than 5 minutes (likely host disconnected)
+        one_minute_ago = timezone.now() - timedelta(seconds=65)
         five_minutes_ago = timezone.now() - timedelta(minutes=5)
-        fifteen_minutes_ago = timezone.now() - timedelta(minutes=15)
         
         Room.objects.filter(
             is_active=True,
             participant_count=0,
-            last_active_at__lte=five_minutes_ago
+            last_active_at__lte=one_minute_ago
         ).update(is_active=False)
 
         Room.objects.filter(
             is_active=True,
             participant_count=1,
-            last_active_at__lte=fifteen_minutes_ago
+            last_active_at__lte=five_minutes_ago
         ).update(is_active=False)
         
         qs = Room.objects.filter(is_active=True)
