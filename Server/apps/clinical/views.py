@@ -262,8 +262,20 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "room_name": f"appointment_{appointment.id}"
         })
 
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        appointment = self.get_object()
+        # 24h cancellation policy
+        if appointment.slot.start_time - timezone.now() < timezone.timedelta(hours=24):
+            return Response({"error": "Cannot cancel within 24 hours of appointment."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        appointment.status = Appointment.Status.CANCELLED
+        appointment.slot.is_reserved = False
+        appointment.slot.save()
+        appointment.save()
+        return Response({"status": "Appointment cancelled"})
+
 class LiveKitWebhookView(APIView):
-    from rest_framework.views import APIView
     permission_classes = [permissions.AllowAny]
     
     def post(self, request):
@@ -285,51 +297,6 @@ class LiveKitWebhookView(APIView):
                     pass
         
         return Response({'status': 'ok'})
-        
-        appointment.status = Appointment.Status.COMPLETED
-        appointment.save()
-        
-        # Notify Patient to Review
-        from apps.utils.notifications import send_push_notification
-        send_push_notification(
-            user=appointment.patient,
-            title="Consultation Completed",
-            body=f"Your session with {request.user.display_name} has ended. Please rate your experience!",
-            data={"type": "REVIEW_REQUEST", "doctor_id": str(request.user.id), "appointment_id": str(appointment.id)}
-        )
-        
-        return Response({"status": "Appointment marked as completed"})
-
-    @action(detail=True, methods=['get'])
-    def join(self, request, pk=None):
-        appointment = self.get_object()
-        # Check if user is part of the appointment
-        if request.user != appointment.patient and request.user != appointment.doctor:
-             return Response({"error": "Unauthorized access to this appointment."}, status=status.HTTP_403_FORBIDDEN)
-        
-        # Optional: Check if time is appropriate (e.g., 5 mins before)
-        
-        from apps.utils.livekit_utils import generate_livekit_token, get_appointment_room_name
-        room_name = get_appointment_room_name(appointment)
-        token = generate_livekit_token(room_name, str(request.user.id), request.user.display_name)
-        
-        return Response({
-            "room_name": room_name,
-            "livekit_token": token
-        })
-
-    @action(detail=True, methods=['post'])
-    def cancel(self, request, pk=None):
-        appointment = self.get_object()
-        # 24h cancellation policy
-        if appointment.slot.start_time - timezone.now() < timezone.timedelta(hours=24):
-             return Response({"error": "Cannot cancel within 24 hours of appointment."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        appointment.status = Appointment.Status.CANCELLED
-        appointment.slot.is_reserved = False
-        appointment.slot.save()
-        appointment.save()
-        return Response({"status": "Appointment cancelled"})
 
 class SOSCallViewSet(viewsets.ModelViewSet):
     serializer_class = SOSCallSerializer
