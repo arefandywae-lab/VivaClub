@@ -21,8 +21,7 @@ class ProfileRepository {
   Future<List<dynamic>> getMyAppointments() async {
     try {
       final response = await _dioClient.dio.get(
-        ApiConstants.appointments,
-        queryParameters: {'mode': 'mine'},
+        '/api/clinical/appointments/',
       );
       if (response.data is Map && response.data.containsKey('results')) {
         return response.data['results'];

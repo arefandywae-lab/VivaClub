@@ -23,8 +23,35 @@ class AssessmentViewSet(viewsets.ModelViewSet):
              return Assessment.objects.all()
         return Assessment.objects.filter(patient=user)
 
+    @transaction.atomic
     def perform_create(self, serializer):
-        serializer.save(patient=self.request.user)
+        user = self.request.user
+        now = timezone.now()
+        
+        # 1. Check if already done within 24 hours
+        if user.last_assessment_date and now - user.last_assessment_date < timezone.timedelta(hours=24):
+            raise serializers.ValidationError("You can only take the assessment once every 24 hours.")
+
+        # 2. Save assessment
+        assessment = serializer.save(patient=user)
+        
+        # 3. Update Mood
+        user.current_mood = assessment.risk_level
+        
+        # 4. Handle Streak
+        if user.last_assessment_date:
+            # If done between 24 and 48 hours ago, increment streak
+            if now - user.last_assessment_date < timezone.timedelta(hours=48):
+                user.streak_count += 1
+            else:
+                # Reset streak if missed more than 48 hours
+                user.streak_count = 1
+        else:
+            # First time assessment
+            user.streak_count = 1
+            
+        user.last_assessment_date = now
+        user.save()
 
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     """Viewset for patients to browse and filter doctors"""
@@ -106,6 +133,16 @@ class TimeSlotViewSet(viewsets.ModelViewSet):
         serializer.save(doctor=self.request.user)
 
 class AppointmentViewSet(viewsets.ModelViewSet):
+    @action(detail=False, methods=['GET'], url_path='admin-list', permission_classes=[permissions.IsAdminUser])
+    def admin_list(self, request):
+        appointments = Appointment.objects.all().order_by('-created_at')
+        page = self.paginate_queryset(appointments)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(appointments, many=True)
+        return Response(serializer.data)
+
     serializer_class = AppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -130,22 +167,123 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         
         serializer.save(patient=self.request.user, doctor=slot.doctor)
         
+        # Notify Doctor about new request
+        try:
+            from apps.utils.notifications import send_push_notification
+            send_push_notification(
+                user=slot.doctor,
+                title="New Booking Request",
+                body=f"{self.request.user.get_full_name() or self.request.user.username} requested an appointment for {slot.start_time.strftime('%Y-%m-%d %H:%M')}."
+            )
+        except Exception as e:
+            print(f"Failed to notify doctor: {e}")
+
+    @action(detail=True, methods=['post'])
+    def confirm(self, request, pk=None):
+        appointment = self.get_object()
+        if request.user != appointment.doctor:
+             return Response({"error": "Only the assigned doctor can confirm the appointment."}, status=status.HTTP_403_FORBIDDEN)
+        
+        if appointment.status != Appointment.Status.PENDING:
+             return Response({"error": "This appointment is not in pending status."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        appointment.status = Appointment.Status.CONFIRMED
+        appointment.save()
+        
         # Notify Patient
         try:
             from apps.utils.notifications import send_push_notification
             send_push_notification(
-                user=self.request.user,
+                user=appointment.patient,
                 title="Appointment Confirmed",
-                body=f"Your appointment with {slot.doctor.display_name} is confirmed for {slot.start_time.strftime('%Y-%m-%d %H:%M')}."
+                body=f"Your appointment with {request.user.display_name} has been confirmed for {appointment.slot.start_time.strftime('%Y-%m-%d %H:%M')}."
             )
         except Exception as e:
-            print(f"Failed to send booking notification: {e}")
+            print(f"Failed to notify patient: {e}")
+        
+        return Response({"status": "Appointment confirmed"})
 
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         appointment = self.get_object()
         if request.user != appointment.doctor:
              return Response({"error": "Only the assigned doctor can complete the appointment."}, status=status.HTTP_403_FORBIDDEN)
+        
+        appointment.status = Appointment.Status.COMPLETED
+        appointment.save()
+        return Response({"status": "Appointment completed"})
+
+    @action(detail=False, methods=['GET'], url_path='latest_test_token', permission_classes=[])
+    def latest_test_token(self, request):
+        from django.core.cache import cache
+        token_data = cache.get('latest_doctor_token')
+        return Response(token_data or {})
+
+    @action(detail=True, methods=['POST'], url_path='join')
+    def join(self, request, pk=None):
+        appointment = self.get_object()
+        if request.user != appointment.patient and request.user != appointment.doctor:
+            return Response({"error": "You are not authorized to join this appointment"}, status=403)
+        if appointment.status != Appointment.Status.CONFIRMED:
+             return Response({"error": "Appointment is not confirmed yet"}, status=400)
+        
+        from livekit import api
+        import os as py_os
+        token = api.AccessToken(
+            py_os.getenv('LIVEKIT_API_KEY'),
+            py_os.getenv('LIVEKIT_API_SECRET'),
+        ).with_identity(request.user.username).with_name(request.user.display_name or request.user.username).with_grants(api.VideoGrants(
+            room_join=True,
+            room=f"appointment_{appointment.id}",
+        ))
+
+        # Save for easy web testing using Redis cache
+        from livekit import api as lk_api
+        doc_token = lk_api.AccessToken(
+            py_os.getenv('LIVEKIT_API_KEY'),
+            py_os.getenv('LIVEKIT_API_SECRET'),
+        ).with_identity('doctor_test_web').with_name('Dr. Test Web').with_grants(lk_api.VideoGrants(
+            room_join=True,
+            room=f"appointment_{appointment.id}",
+        ))
+        
+        token_data = {
+            'token': doc_token.to_jwt(),
+            'url': py_os.getenv('LIVEKIT_API_URL'),
+            'room_name': f"appointment_{appointment.id}"
+        }
+        from django.core.cache import cache
+        cache.set('latest_doctor_token', token_data, timeout=3600)
+        
+        return Response({
+            "token": token.to_jwt(),
+            "url": py_os.getenv('LIVEKIT_API_URL'),
+            "room_name": f"appointment_{appointment.id}"
+        })
+
+class LiveKitWebhookView(APIView):
+    from rest_framework.views import APIView
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        # In a real app, we should verify the signature here
+        event = request.data
+        event_type = event.get('event')
+        
+        if event_type == 'room_finished':
+            room_name = event.get('room', {}).get('name', '')
+            if room_name.startswith('appointment_'):
+                appointment_id = room_name.replace('appointment_', '')
+                try:
+                    appointment = Appointment.objects.get(id=appointment_id)
+                    if appointment.status == Appointment.Status.CONFIRMED:
+                        appointment.status = Appointment.Status.COMPLETED
+                        appointment.save()
+                        print(f'✅ Appointment {appointment_id} marked as COMPLETED')
+                except Appointment.DoesNotExist:
+                    pass
+        
+        return Response({'status': 'ok'})
         
         appointment.status = Appointment.Status.COMPLETED
         appointment.save()
@@ -279,11 +417,26 @@ class SOSCallViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_position(self, request):
         user = request.user
-        active_call = SOSCall.objects.filter(patient=user, status=SOSCall.Status.WAITING).first()
+        # Check for both WAITING and ONGOING
+        active_call = SOSCall.objects.filter(patient=user).filter(
+            models.Q(status=SOSCall.Status.WAITING) | models.Q(status=SOSCall.Status.ONGOING)
+        ).order_by('-created_at').first()
         
         if not active_call:
-            return Response({"position": 0, "message": "No active SOS call."})
+            return Response({"position": 0, "status": "none", "message": "No active SOS call."})
         
+        if active_call.status == SOSCall.Status.ONGOING:
+            from apps.utils.livekit_utils import generate_livekit_token, get_sos_room_name
+            room_name = get_sos_room_name(active_call)
+            token = generate_livekit_token(room_name, str(user.id), user.display_name)
+            return Response({
+                "position": 0,
+                "status": "ongoing",
+                "sos_id": str(active_call.id),
+                "room_name": room_name,
+                "livekit_token": token
+            })
+
         # Count calls that should be handled before this one
         position = SOSCall.objects.filter(
             status=SOSCall.Status.WAITING
@@ -294,6 +447,7 @@ class SOSCallViewSet(viewsets.ModelViewSet):
         
         return Response({
             "position": position,
+            "status": "waiting",
             "sos_id": str(active_call.id),
             "priority_score": active_call.priority_score,
             "created_at": active_call.created_at

@@ -138,6 +138,28 @@ async def unmute_bot(bot_id: str):
     return {"message": "Bot unmuted", "bot": bot.to_dict()}
 
 
+@app.post("/bots/{bot_id}/hand-raise")
+async def raise_hand(bot_id: str):
+    """Make the bot raise its hand."""
+    bot = bots.get(bot_id)
+    if not bot:
+        raise HTTPException(404, "Bot not found")
+
+    await bot.set_hand_raised(True)
+    return {"message": "Hand raised", "bot": bot.to_dict()}
+
+
+@app.post("/bots/{bot_id}/lower-hand")
+async def lower_hand(bot_id: str):
+    """Make the bot lower its hand."""
+    bot = bots.get(bot_id)
+    if not bot:
+        raise HTTPException(404, "Bot not found")
+
+    await bot.set_hand_raised(False)
+    return {"message": "Hand lowered", "bot": bot.to_dict()}
+
+
 @app.post("/bots/{bot_id}/leave")
 async def leave_room(bot_id: str):
     """Disconnect bot from the room but keep it in registry."""

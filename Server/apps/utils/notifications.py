@@ -54,3 +54,29 @@ def notify_sos_to_doctors(sos_call):
                 "patient_name": sos_call.patient.display_name
             }
         )
+
+def broadcast_test_push():
+    """
+    Broadcasts a test notification to ALL registered device tokens in the system.
+    """
+    tokens = DeviceToken.objects.all().values_list('token', flat=True)
+    if not tokens:
+        return 0
+    
+    messages = [
+        messaging.Message(
+            notification=messaging.Notification(
+                title="🔔 VivaClub System Test",
+                body="This is a test push notification from the admin dashboard. Everything is working!",
+            ),
+            data={"type": "TEST"},
+            token=token,
+        ) for token in tokens
+    ]
+    
+    try:
+        response = messaging.send_each(messages)
+        return response.success_count
+    except Exception as e:
+        logger.error(f"Broadcast test failed: {e}")
+        return 0

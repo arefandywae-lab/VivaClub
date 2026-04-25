@@ -23,6 +23,11 @@ class User(AbstractUser):
     email_verification_token = models.CharField(max_length=100, blank=True, null=True)
     is_online = models.BooleanField(default=False)
     
+    # Clinical/Gamification Stats
+    current_mood = models.CharField(max_length=20, default='UNKNOWN')
+    streak_count = models.IntegerField(default=0)
+    last_assessment_date = models.DateTimeField(null=True, blank=True)
+    
     def __str__(self):
         return self.username
 

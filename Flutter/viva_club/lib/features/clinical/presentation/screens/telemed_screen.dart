@@ -4,12 +4,64 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/clinical_bloc.dart';
 import '../bloc/clinical_state.dart';
+import 'package:viva_club/features/auth/presentation/bloc/auth_bloc.dart';
 
-class TelemedScreen extends StatelessWidget {
+import 'dart:async';
+
+class TelemedScreen extends StatefulWidget {
   const TelemedScreen({super.key});
 
   @override
+  State<TelemedScreen> createState() => _TelemedScreenState();
+}
+
+class _TelemedScreenState extends State<TelemedScreen> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _getCooldownRemaining(String? lastDateStr) {
+    if (lastDateStr == null) return '';
+    try {
+      final lastDate = DateTime.parse(lastDateStr).toUtc();
+      final nextAvailable = lastDate.add(const Duration(hours: 24));
+      final now = DateTime.now().toUtc();
+
+      if (now.isAfter(nextAvailable)) return '';
+
+      final diff = nextAvailable.difference(now);
+      final h = diff.inHours.toString().padLeft(2, '0');
+      final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+      final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+      return '$h:$m:$s';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    String cooldown = '';
+    bool isAssessmentLocked = false;
+    
+    if (authState is AuthAuthenticated) {
+      cooldown = _getCooldownRemaining(authState.user['last_assessment_date']);
+      isAssessmentLocked = cooldown.isNotEmpty;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       body: SafeArea(
@@ -36,32 +88,42 @@ class TelemedScreen extends StatelessWidget {
               ),
               SizedBox(height: 32.h),
               
-              // Assessment Card
+              // Assessment Card with Cooldown
               _buildFeatureCard(
                 title: 'Mental Health Assessment',
-                subtitle: 'Take the PHQ-9 test to understand your mental state better.',
+                subtitle: isAssessmentLocked 
+                  ? 'Available in $cooldown'
+                  : 'Take the PHQ-9 test to understand your mental state better.',
                 icon: Icons.assignment_outlined,
                 color: const Color(0xFF6C63FF),
-                onTap: () => context.push('/clinical/assessment'),
+                onTap: isAssessmentLocked ? null : () => context.push('/clinical/assessment'),
+                isLocked: isAssessmentLocked,
+                subtitleColor: isAssessmentLocked ? Colors.redAccent : null,
               ),
               
               SizedBox(height: 24.h),
               
               // SOS Card
               BlocBuilder<ClinicalBloc, ClinicalState>(
-                builder: (context, state) {
-                  final isUnlocked = state.riskLevel != null;
+                builder: (context, clinicalState) {
+                  bool isSOSUnlocked = clinicalState.riskLevel != null;
+                  if (authState is AuthAuthenticated) {
+                    if (authState.user['current_mood'] == 'SEVERE') {
+                      isSOSUnlocked = true;
+                    }
+                  }
+                  
                   return _buildFeatureCard(
                     title: 'Emergency SOS',
-                    subtitle: isUnlocked 
+                    subtitle: isSOSUnlocked 
                       ? 'Immediate assistance for urgent mental health distress.'
                       : 'Complete your assessment to unlock this feature.',
                     icon: Icons.emergency_rounded,
                     color: Colors.redAccent,
-                    onTap: isUnlocked 
+                    onTap: isSOSUnlocked 
                       ? () => context.push('/clinical/sos-waiting')
                       : null,
-                    isLocked: !isUnlocked,
+                    isLocked: !isSOSUnlocked,
                   );
                 },
               ),
@@ -103,6 +165,7 @@ class TelemedScreen extends StatelessWidget {
     required Color color,
     required VoidCallback? onTap,
     bool isLocked = false,
+    Color? subtitleColor,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -113,7 +176,7 @@ class TelemedScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.08),
+              color: isLocked ? Colors.transparent : color.withOpacity(0.08),
               blurRadius: 20,
               offset: const Offset(0, 10),
             )
@@ -151,7 +214,8 @@ class TelemedScreen extends StatelessWidget {
                     subtitle,
                     style: TextStyle(
                       fontSize: 14.sp,
-                      color: Colors.grey[500],
+                      color: subtitleColor ?? Colors.grey[500],
+                      fontWeight: subtitleColor != null ? FontWeight.bold : FontWeight.normal,
                       height: 1.3,
                     ),
                   ),

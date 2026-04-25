@@ -249,7 +249,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 listener: (context, state) {
                   if (state is RoomJoined) {
                     if (!mounted) return;
-                    // Navigation happens, keep submitting true or reset if needed, but usually we leave.
                     context.pushReplacement(
                       '/live_room',
                       extra: {

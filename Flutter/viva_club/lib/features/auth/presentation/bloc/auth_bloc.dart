@@ -26,6 +26,15 @@ class AuthLogoutRequested extends AuthEvent {}
 
 class AuthCheckRequested extends AuthEvent {}
 
+class ProfileRefreshRequested extends AuthEvent {}
+
+class AuthForgotPasswordRequested extends AuthEvent {
+  final String email;
+  const AuthForgotPasswordRequested(this.email);
+  @override
+  List<Object> get props => [email];
+}
+
 // --- States ---
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -38,11 +47,19 @@ class AuthLoading extends AuthState {}
 class AuthAuthenticated extends AuthState {
   final Map<String, dynamic> user; // Profile data
   const AuthAuthenticated(this.user);
+
+  @override
+  List<Object> get props => [user];
 }
 class AuthUnauthenticated extends AuthState {}
 class AuthFailure extends AuthState {
   final String message;
   const AuthFailure(this.message);
+}
+
+class AuthForgotPasswordSuccess extends AuthState {
+  final String message;
+  const AuthForgotPasswordSuccess(this.message);
 }
 
 // --- BLoC ---
@@ -56,6 +73,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthCheckRequested>(_onCheckRequested);
+    on<ProfileRefreshRequested>(_onProfileRefreshRequested);
+    on<AuthForgotPasswordRequested>(_onForgotPasswordRequested);
+  }
+
+  Future<void> _onProfileRefreshRequested(ProfileRefreshRequested event, Emitter<AuthState> emit) async {
+    try {
+      final profile = await _authRepository.getProfile();
+      emit(AuthAuthenticated(profile));
+    } catch (_) {
+      // Ignore background refresh failures
+    }
   }
 
   Future<void> _onLoginRequested(AuthLoginRequested event, Emitter<AuthState> emit) async {
@@ -98,5 +126,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       } catch (_) {
           emit(AuthUnauthenticated());
       }
+  }
+
+  Future<void> _onForgotPasswordRequested(AuthForgotPasswordRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      await _authRepository.forgotPassword(event.email);
+      emit(const AuthForgotPasswordSuccess("Reset link sent! Please check your email."));
+    } catch (e) {
+      emit(AuthFailure(e.toString()));
+    }
   }
 }

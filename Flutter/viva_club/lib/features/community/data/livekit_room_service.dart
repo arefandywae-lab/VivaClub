@@ -25,7 +25,6 @@ class LiveKitRoomService extends ChangeNotifier {
   bool get isMuted {
     final p = _room?.localParticipant;
     if (p == null) return true;
-    // Considered muted if no audio tracks or all audio tracks are muted
     return p.audioTrackPublications.isEmpty ||
         p.audioTrackPublications.every((track) => track.muted);
   }
@@ -41,6 +40,9 @@ class LiveKitRoomService extends ChangeNotifier {
   }) async {
     // If already in this room, do nothing
     if (_activeRoomId == roomId && _room != null) return;
+
+    // Reset wasKicked status immediately when starting a new connection attempt
+    _wasKicked = false;
 
     // If in another room, leave it first
     if (_activeRoomId != null) {
@@ -68,21 +70,22 @@ class LiveKitRoomService extends ChangeNotifier {
       _isConnecting = false;
       _wasKicked = false;
 
-      // Listen for disconnection (kicked by host)
+      // Listen for disconnection (kicked by host or room finished)
       _room!.events.listen((event) {
         if (event is RoomDisconnectedEvent) {
-          debugPrint('Room disconnected — likely kicked');
-          _wasKicked = true;
-          _activeRoomId = null;
-          _currentTitle = null;
-          _isHost = false;
-          _participants = [];
-          _room = null;
-          notifyListeners();
+          // Only trigger wasKicked if it wasn't a manual leave (activeRoomId still set)
+          if (_activeRoomId != null) {
+            debugPrint('Room disconnected unexpectedly — likely kicked or room closed');
+            _wasKicked = true;
+            _activeRoomId = null;
+            _currentTitle = null;
+            _isHost = false;
+            _participants = [];
+            _room = null;
+            notifyListeners();
+          }
         }
       });
-
-      // Everyone starts muted — user manually toggles mic via the mic button
 
       _updateParticipants();
       notifyListeners();
@@ -112,21 +115,10 @@ class LiveKitRoomService extends ChangeNotifier {
     try {
       final p = _room?.localParticipant;
       if (p == null) return;
-
-      // Check if we have permission to publish
-      if (enabled) {
-        // LiveKit's permissions object isn't always fully populated immediately after join for listeners
-        // But we can check if we are meant to be a publisher via metadata or role if we had that info.
-        // For now, let's catch the specific error or check if we can publish.
-        // A safer way is to check the participant's permissions if available.
-        // However, simply wrapping in try-catch as done below is good, but we should handle the specific error.
-      }
-
       await p.setMicrophoneEnabled(enabled);
       notifyListeners();
     } catch (e) {
       debugPrint('Error toggling microphone: $e');
-      // Optional: rethrow or notify UI of error
     }
   }
 
@@ -137,7 +129,6 @@ class LiveKitRoomService extends ChangeNotifier {
     _activeRoomId = null;
     _currentTitle = null;
     _isHost = false;
-    _wasKicked = false;
     _participants = [];
 
     final roomToDispose = _room;
@@ -148,6 +139,8 @@ class LiveKitRoomService extends ChangeNotifier {
     // Background cleanup
     communityRepository.leaveRoom(roomId);
     try {
+      // Remove listener before disconnecting to avoid event loop issues
+      roomToDispose?.removeListener(_onRoomEvent);
       await roomToDispose?.disconnect();
       await roomToDispose?.dispose();
     } catch (e) {
@@ -159,8 +152,6 @@ class LiveKitRoomService extends ChangeNotifier {
     try {
       final p = _room?.localParticipant;
       if (p == null) return;
-
-      // Update metadata: {"handRaised": true}
       p.setMetadata('{"handRaised": $isRaised}');
       notifyListeners();
     } catch (e) {
@@ -171,7 +162,6 @@ class LiveKitRoomService extends ChangeNotifier {
   bool isHandRaised(Participant p) {
     try {
       if (p.metadata == null || p.metadata!.isEmpty) return false;
-      // Simple string check to avoid full JSON parsing overhead if simple
       return p.metadata!.contains('"handRaised": true');
     } catch (_) {
       return false;
@@ -181,6 +171,12 @@ class LiveKitRoomService extends ChangeNotifier {
   Future<void> inviteSpeaker(String identity) async {
     if (_activeRoomId != null) {
       await communityRepository.inviteSpeaker(_activeRoomId!, identity);
+    }
+  }
+
+  Future<void> demoteSpeaker(String identity) async {
+    if (_activeRoomId != null) {
+      await communityRepository.demoteSpeaker(_activeRoomId!, identity);
     }
   }
 
@@ -202,6 +198,18 @@ class LiveKitRoomService extends ChangeNotifier {
   Future<void> kickParticipant(String identity) async {
     if (_activeRoomId != null) {
       await communityRepository.kickParticipant(_activeRoomId!, identity);
+    }
+  }
+
+  Future<void> promoteModerator(String identity) async {
+    if (_activeRoomId != null) {
+      await communityRepository.promoteModerator(_activeRoomId!, identity);
+    }
+  }
+
+  Future<void> demoteModerator(String identity) async {
+    if (_activeRoomId != null) {
+      await communityRepository.demoteModerator(_activeRoomId!, identity);
     }
   }
 

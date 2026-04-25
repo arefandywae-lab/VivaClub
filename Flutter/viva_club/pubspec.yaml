@@ -68,6 +68,9 @@ dependencies:
   # WebSockets
   web_socket_channel: ^3.0.1
   collection: ^1.18.0
+  firebase_core: ^4.7.0
+  firebase_messaging: ^16.2.0
+  table_calendar: ^3.1.3
 
 dev_dependencies:
   flutter_test:

@@ -122,6 +122,18 @@ class AdminCleanupTestDataView(APIView):
             "deleted_ghost_profiles": ghosts_count,
         })
 
+class AdminTestPushView(APIView):
+    """Admin only API to send a test broadcast push notification"""
+    permission_classes = (permissions.IsAuthenticated, permissions.IsAdminUser)
+
+    def post(self, request):
+        from apps.utils.notifications import broadcast_test_push
+        count = broadcast_test_push()
+        return Response({
+            "message": f"Test notification sent to {count} devices",
+            "success_count": count
+        })
+
 from rest_framework import viewsets
 from .models import DeviceToken
 from .serializers import DeviceTokenSerializer

@@ -64,24 +64,14 @@ class SettingsScreen extends StatelessWidget {
             iconColor: Colors.orange,
             label: 'Privacy Settings',
             subtitle: 'Control who can see you',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Privacy settings coming soon')),
-              );
-            },
+            onTap: () => context.push('/privacy_settings'),
           ),
           _SettingsTile(
             icon: Icons.shield_rounded,
             iconColor: Colors.green,
             label: 'Trust & Safety',
             subtitle: 'View your trust score and reports',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Trust & Safety details coming soon'),
-                ),
-              );
-            },
+            onTap: () => context.push('/trust_safety'),
           ),
 
           SizedBox(height: 20.h),

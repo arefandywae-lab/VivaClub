@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
@@ -14,6 +15,7 @@ import 'package:viva_club/features/community/data/community_repository.dart';
 import 'package:viva_club/features/community/data/following_repository.dart';
 import 'package:viva_club/features/community/presentation/bloc/following_bloc.dart';
 import 'package:viva_club/core/network/dio_client.dart';
+import '../../../profile/data/profile_repository.dart';
 import '../widgets/follow_button.dart';
 
 class LiveRoomScreen extends StatefulWidget {
@@ -38,24 +40,52 @@ class LiveRoomScreen extends StatefulWidget {
 
 class _LiveRoomScreenState extends State<LiveRoomScreen> {
   bool _isLeaving = false;
-  bool _isDragging = false; // Show zone borders when dragging
+  bool _isDragging = false;
+  final Set<String> _pendingSpeakers = {};
+  final Set<String> _pendingListeners = {};
 
-  // Helper: check if a participant is the room host
+  // Helper: check if a participant is the room host or a manual moderator
   bool _isParticipantHost(Participant p) {
     if (p is LocalParticipant) return widget.isHost;
-    return p.metadata?.contains('"host": true') == true ||
-        p.metadata?.contains('"host":true') == true;
+    final meta = p.metadata ?? '';
+    // Standard owner flag or manually promoted moderator flag
+    return meta.contains('"host": true') || 
+           meta.contains('"host":true') ||
+           meta.contains('"is_moderator": true') || 
+           meta.contains('"is_moderator":true');
+  }
+
+  bool _isParticipantOwner(Participant p) {
+    final meta = p.metadata ?? '';
+    return meta.contains('"host": true') || meta.contains('"host":true');
   }
 
   // Helper: check if a participant is a speaker
   // Uses metadata "speaker": true (set by server on invite) for cross-device sync
   bool _isSpeaker(Participant p) {
-    if (_isParticipantHost(p)) return true; // Host is always a speaker
-    // Check metadata first — server sets this on invite, visible to all devices
-    if (p.metadata?.contains('"speaker": true') == true ||
-        p.metadata?.contains('"speaker":true') == true) {
-      return true;
+    final meta = p.metadata ?? '';
+    final hasSpeakerMeta = meta.contains('"speaker": true') || meta.contains('"speaker":true');
+
+    // Auto-clear pending states if the real metadata has caught up
+    if (hasSpeakerMeta) {
+      if (_pendingSpeakers.contains(p.identity)) {
+        Future.microtask(() => setState(() => _pendingSpeakers.remove(p.identity)));
+      }
+    } else {
+      if (_pendingListeners.contains(p.identity)) {
+        Future.microtask(() => setState(() => _pendingListeners.remove(p.identity)));
+      }
     }
+
+    // CRITICAL: Host and Moderators are ALWAYS speakers
+    if (_isParticipantHost(p)) return true;
+    
+    // If pending move to speaker, show as speaker
+    if (_pendingSpeakers.contains(p.identity)) return true;
+    if (_pendingListeners.contains(p.identity)) return false;
+
+    if (hasSpeakerMeta) return true;
+
     // Fallback: check permissions (for local participant)
     if (p is LocalParticipant) {
       return p.permissions.canPublish == true;
@@ -132,6 +162,16 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
         context.go('/dashboard');
       }
     }
+  }
+
+  @override
+  void dispose() {
+    // Ensure we disconnect when the screen is destroyed, 
+    // unless we are already in the process of leaving.
+    if (!_isLeaving) {
+      context.read<LiveKitRoomService>().leave();
+    }
+    super.dispose();
   }
 
   @override
@@ -338,7 +378,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
             // Host can drag speakers back to listener zone
             if (widget.isHost && p is! LocalParticipant) {
-              return LongPressDraggable<Participant>(
+              return Draggable<Participant>(
                 data: p,
                 onDragStarted: () => setState(() => _isDragging = true),
                 onDragEnd: (_) => setState(() => _isDragging = false),
@@ -385,15 +425,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           // Accept only listeners (not already speakers)
           return !speakers.contains(details.data);
         },
-        onAcceptWithDetails: (details) {
+        onAcceptWithDetails: (details) async {
           final p = details.data;
-          // Invite listener to speak — grants canPublish permission
-          service.inviteSpeaker(p.identity);
-          // Auto-enable mic for the invited user (they'll appear as speaker)
-          if (p.audioTrackPublications.isNotEmpty) {
-            final trackSid = p.audioTrackPublications.first.sid;
-            service.muteParticipant(p.identity, trackSid, false);
+          setState(() {
+            _pendingSpeakers.add(p.identity);
+            _pendingListeners.remove(p.identity);
+          });
+          
+          try {
+            await service.inviteSpeaker(p.identity);
+            // Auto-enable mic for the invited user (they'll appear as speaker)
+            if (p.audioTrackPublications.isNotEmpty) {
+              final trackSid = p.audioTrackPublications.first.sid;
+              service.muteParticipant(p.identity, trackSid, false);
+            }
+          } catch (e) {
+            if (mounted) setState(() => _pendingSpeakers.remove(p.identity));
           }
+          
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('${p.name} invited to speak')));
@@ -460,20 +509,26 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
               final p = listeners[index];
               final avatar = _buildParticipantAvatar(p, false, index);
               final handRaised = service.isHandRaised(p);
-
+              
               // Host can drag hand-raised listeners to speaker zone
-              if (widget.isHost && handRaised) {
-                return LongPressDraggable<Participant>(
+              if (service.isHost && handRaised) {
+                return Draggable<Participant>(
                   data: p,
-                  onDragStarted: () => setState(() => _isDragging = true),
+                  onDragStarted: () {
+                    HapticFeedback.lightImpact();
+                    setState(() => _isDragging = true);
+                  },
                   onDragEnd: (_) => setState(() => _isDragging = false),
                   onDraggableCanceled: (_, __) =>
                       setState(() => _isDragging = false),
                   feedback: Material(
                     color: Colors.transparent,
-                    child: SizedBox(
-                      width: 60.w,
-                      child: Opacity(opacity: 0.85, child: avatar),
+                    child: Transform.scale(
+                      scale: 1.1,
+                      child: SizedBox(
+                        width: 70.w,
+                        child: Opacity(opacity: 0.9, child: avatar),
+                      ),
                     ),
                   ),
                   childWhenDragging: Opacity(opacity: 0.3, child: avatar),
@@ -510,17 +565,19 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           // Accept only current speakers (demoting)
           return !listeners.contains(details.data);
         },
-        onAcceptWithDetails: (details) {
+        onAcceptWithDetails: (details) async {
           final p = details.data;
-          // Revoke speaker: mute + remove publish permission
-          // For now, mute them which effectively demotes
-          if (p.audioTrackPublications.isNotEmpty) {
-            service.muteParticipant(
-              p.identity,
-              p.audioTrackPublications.first.sid,
-              true,
-            );
+          setState(() {
+            _pendingListeners.add(p.identity);
+            _pendingSpeakers.remove(p.identity);
+          });
+          
+          try {
+            await service.demoteSpeaker(p.identity);
+          } catch (e) {
+            if (mounted) setState(() => _pendingListeners.remove(p.identity));
           }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('${p.name} moved to listeners')),
           );
@@ -888,6 +945,17 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                         ),
                       ),
                     if (ghostId != null) SizedBox(width: 12.w),
+                    // Block button
+                    _buildCardButton(
+                      icon: Icons.block_rounded,
+                      label: 'Block',
+                      color: Colors.redAccent,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _showBlockConfirmation(context, p);
+                      },
+                    ),
+                    if (ghostId != null) SizedBox(width: 12.w),
                     // Report button
                     _buildCardButton(
                       icon: Icons.flag_rounded,
@@ -901,6 +969,36 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                     // Kick — host only
                     if (widget.isHost) ...[
                       SizedBox(width: 12.w),
+                      // Mute/Unmute button
+                      Builder(builder: (context) {
+                        final isSpeaker = _isSpeaker(p);
+                        if (!isSpeaker) return const SizedBox();
+                        
+                        final muted = p.audioTrackPublications.isEmpty ||
+                                      p.audioTrackPublications.every((pub) => pub.muted);
+                                      
+                        return _buildCardButton(
+                          icon: muted ? Icons.mic_rounded : Icons.mic_off_rounded,
+                          label: muted ? 'Unmute' : 'Mute',
+                          color: muted ? const Color(0xFF059669) : const Color(0xFFEA580C),
+                          onTap: () {
+                            String? trackSid;
+                            if (p.audioTrackPublications.isNotEmpty) {
+                              trackSid = p.audioTrackPublications.first.sid;
+                            }
+
+                            if (trackSid != null) {
+                              service.muteParticipant(p.identity, trackSid, !muted);
+                              Navigator.pop(ctx);
+                            } else {
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                 const SnackBar(content: Text('Audio track not found for this participant'))
+                               );
+                            }
+                          },
+                        );
+                      }),
+                      SizedBox(width: 12.w),
                       _buildCardButton(
                         icon: Icons.remove_circle_rounded,
                         label: 'Kick',
@@ -910,6 +1008,36 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
                           _showKickConfirmation(context, p);
                         },
                       ),
+                      // Promote/Demote Moderator (Manual)
+                      if (_isSpeaker(p) && !_isParticipantOwner(p)) ...[
+                         SizedBox(width: 12.w),
+                         Builder(builder: (context) {
+                           final isMod = p.metadata?.contains('"is_moderator": true') == true ||
+                                          p.metadata?.contains('"is_moderator":true') == true;
+                           
+                           return _buildCardButton(
+                             icon: isMod ? Icons.verified_user_rounded : Icons.add_moderator_rounded,
+                             label: isMod ? 'Demote Mod' : 'Promote Mod',
+                             color: isMod ? Colors.blue : Colors.blueGrey,
+                             onTap: () async {
+                               try {
+                                 if (isMod) {
+                                   await service.demoteModerator(p.identity);
+                                 } else {
+                                   await service.promoteModerator(p.identity);
+                                 }
+                                 if (context.mounted) Navigator.pop(context);
+                               } catch (e) {
+                                 if (context.mounted) {
+                                   ScaffoldMessenger.of(context).showSnackBar(
+                                     SnackBar(content: Text(e.toString())),
+                                   );
+                                 }
+                               }
+                             },
+                           );
+                         }),
+                      ],
                     ],
                   ],
                 ),
@@ -1108,6 +1236,52 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
           },
         );
       },
+    );
+  }
+
+  // ─── BLOCK CONFIRMATION ────────────────
+  void _showBlockConfirmation(BuildContext context, Participant p) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        title: const Text('Block User'),
+        content: Text(
+          'Are you sure you want to block ${EmojiUtils.getNameWithoutTag(p.name)}? They will no longer be able to see your rooms.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                // Use ProfileRepository to block
+                await ProfileRepository().blockUser(p.identity);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Blocked ${EmojiUtils.getNameWithoutTag(p.name)}',
+                      ),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Failed to block: $e')));
+                }
+              }
+            },
+            child: const Text('Block', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }

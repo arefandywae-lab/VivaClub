@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AssessmentViewSet, OpdNoteViewSet, PersonalNoteViewSet,
     DoctorViewSet, TimeSlotViewSet, AppointmentViewSet, 
-    SOSCallViewSet, DoctorReviewViewSet
+    SOSCallViewSet, DoctorReviewViewSet, LiveKitWebhookView
 )
 
 router = DefaultRouter()
@@ -17,5 +17,6 @@ router.register(r'sos', SOSCallViewSet, basename='sos')
 router.register(r'reviews', DoctorReviewViewSet, basename='reviews')
 
 urlpatterns = [
+    path('livekit-webhook/', LiveKitWebhookView.as_view(), name='livekit-webhook'),
     path('', include(router.urls)),
 ]

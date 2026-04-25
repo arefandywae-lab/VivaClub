@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import AllowAny
 from .views import (
     RegisterView, ProfileView, AdminUserListView, AdminUserActionView, 
-    AdminCleanupTestDataView, DeviceTokenViewSet, ForgotPasswordView, 
+    AdminCleanupTestDataView, AdminTestPushView, DeviceTokenViewSet, ForgotPasswordView, 
     ResetPasswordPageView, ResetPasswordView, VerifyEmailView
 )
 from .serializers import CustomTokenObtainPairSerializer
@@ -34,5 +34,6 @@ urlpatterns = router.urls + [
     path('admin/users/', AdminUserListView.as_view(), name='admin_users'),
     path('admin/users/<uuid:pk>/<str:action>/', AdminUserActionView.as_view(), name='admin_user_action'),
     path('admin/cleanup-test-data/', AdminCleanupTestDataView.as_view(), name='admin_cleanup_test_data'),
+    path('admin/test-push/', AdminTestPushView.as_view(), name='admin_test_push'),
 ]
 

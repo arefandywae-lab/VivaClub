@@ -81,7 +81,7 @@ class AuthRepository {
     try {
       await _dioClient.dio.post(
         ApiConstants.forgotPassword,
-        data: {'identifier': emailOrPhone},
+        data: {'email': emailOrPhone},
       );
     } catch (e) {
       if (e is DioException) {

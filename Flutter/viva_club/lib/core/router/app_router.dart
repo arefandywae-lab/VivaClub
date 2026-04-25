@@ -27,7 +27,18 @@ import '../../features/community/data/following_repository.dart';
 import '../../core/network/dio_client.dart';
 import '../../features/profile/presentation/screens/blocked_users_screen.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
+import '../../features/profile/presentation/screens/privacy_settings_screen.dart';
+import '../../features/profile/presentation/screens/trust_safety_screen.dart';
 import '../widgets/scaffold_with_nav_bar.dart';
+import '../../features/doctor/presentation/screens/doctor_main_screen.dart';
+import '../../features/doctor/presentation/screens/doctor_exam_room_screen.dart';
+import '../../features/doctor/presentation/screens/doctor_login_screen.dart';
+import '../../features/doctor/presentation/screens/doctor_consultation_history_screen.dart';
+import '../../features/doctor/presentation/screens/doctor_availability_screen.dart';
+import '../../features/doctor/presentation/screens/doctor_personal_info_screen.dart';
+import '../../features/doctor/presentation/screens/doctor_support_screen.dart';
+import '../../features/doctor/presentation/screens/doctor_patient_detail_screen.dart';
+import '../../features/doctor/presentation/screens/doctor_notification_screen.dart';
 
 // Keys for navigation state preservation
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -53,6 +64,7 @@ class AppRouter {
       final isLoggedIn = authState is AuthAuthenticated;
       final isLoggingIn =
           state.uri.toString() == '/login' ||
+          state.uri.toString() == '/doctor-login' ||
           state.uri.toString() == '/signup' ||
           state.uri.toString() == '/';
 
@@ -78,6 +90,7 @@ class AppRouter {
       ),
       GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(path: '/doctor-login', builder: (context, state) => const DoctorLoginScreen()),
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
@@ -110,6 +123,16 @@ class AppRouter {
         path: '/blocked_users',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const BlockedUsersScreen(),
+      ),
+      GoRoute(
+        path: '/privacy_settings',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const PrivacySettingsScreen(),
+      ),
+      GoRoute(
+        path: '/trust_safety',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const TrustSafetyScreen(),
       ),
       GoRoute(
         path: '/following',
@@ -175,6 +198,62 @@ class AppRouter {
         path: '/clinical/my-appointments',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const MyAppointmentsScreen(),
+      ),
+      GoRoute(
+        path: '/doctor',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DoctorMainScreen(),
+      ),
+      GoRoute(
+        path: '/doctor/exam-room',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return DoctorExamRoomScreen(
+            url: extra['url'],
+            token: extra['token'],
+            roomName: extra['room_name'],
+            patientName: extra['patient_name'] ?? 'Anonymous Panda',
+            appointmentId: extra['appointment_id'].toString(),
+            isSos: extra['is_sos'] ?? false,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/doctor/history',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DoctorConsultationHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/doctor/availability',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DoctorAvailabilityScreen(),
+      ),
+      GoRoute(
+        path: '/doctor/profile-edit',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DoctorPersonalInfoScreen(),
+      ),
+      GoRoute(
+        path: '/doctor/support',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DoctorSupportScreen(),
+      ),
+      GoRoute(
+        path: '/doctor/patient-detail',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return DoctorPatientDetailScreen(
+            patientId: extra['patient_id'].toString(),
+            patientName: extra['patient_name'],
+          );
+        },
+      ),
+      GoRoute(
+        path: '/doctor/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DoctorNotificationScreen(),
       ),
 
       // Screens WITH Bottom Nav (ShellRoute)

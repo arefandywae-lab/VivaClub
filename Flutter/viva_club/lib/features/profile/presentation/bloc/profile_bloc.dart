@@ -36,15 +36,37 @@ class ProfileLoaded extends ProfileState {
   @override
   List<Object> get props => [user, appointments, trustScore];
 
-  /// Upcoming = status is 'available', 'reserved', or 'confirmed' and in the future
-  List<dynamic> get upcomingAppointments => appointments
-      .where((a) => a['status'] == 'confirmed' || a['status'] == 'reserved')
-      .toList();
+  /// Upcoming = status is 'CONFIRMED' or 'PENDING'
+  List<dynamic> get upcomingAppointments {
+    final list = appointments
+        .where((a) => a['status'] == 'CONFIRMED' || a['status'] == 'PENDING')
+        .toList();
+    
+    // Sort by start_time ascending
+    list.sort((a, b) {
+      final t1 = DateTime.tryParse(a['slot_detail']?['start_time']?.toString() ?? '') ?? DateTime(2099);
+      final t2 = DateTime.tryParse(b['slot_detail']?['start_time']?.toString() ?? '') ?? DateTime(2099);
+      return t1.compareTo(t2);
+    });
+    
+    return list;
+  }
 
-  /// Past = status is 'completed' or 'cancelled'
-  List<dynamic> get pastAppointments => appointments
-      .where((a) => a['status'] == 'completed' || a['status'] == 'cancelled')
-      .toList();
+  /// Past = status is 'COMPLETED' or 'CANCELLED'
+  List<dynamic> get pastAppointments {
+    final list = appointments
+        .where((a) => a['status'] == 'COMPLETED' || a['status'] == 'CANCELLED')
+        .toList();
+    
+    // Sort by start_time descending (most recent first)
+    list.sort((a, b) {
+      final t1 = DateTime.tryParse(a['slot_detail']?['start_time']?.toString() ?? '') ?? DateTime(2000);
+      final t2 = DateTime.tryParse(b['slot_detail']?['start_time']?.toString() ?? '') ?? DateTime(2000);
+      return t2.compareTo(t1);
+    });
+    
+    return list;
+  }
 }
 
 class ProfileFailure extends ProfileState {

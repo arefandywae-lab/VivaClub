@@ -28,3 +28,15 @@ class SOSRequested extends ClinicalEvent {
 class QueueStatusRequested extends ClinicalEvent {
   const QueueStatusRequested();
 }
+
+class QuestionIndexChanged extends ClinicalEvent {
+  final int index;
+  const QuestionIndexChanged(this.index);
+
+  @override
+  List<Object?> get props => [index];
+}
+
+class ResetAssessment extends ClinicalEvent {
+  const ResetAssessment();
+}

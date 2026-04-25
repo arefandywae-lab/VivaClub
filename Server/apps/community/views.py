@@ -119,12 +119,13 @@ class RoomViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         from datetime import timedelta
         from django.db.models import Q
-        one_minute_ago = timezone.now() - timedelta(minutes=1)
+        # Increase timeout to 5 minutes to prevent aggressive closing of new rooms
+        five_minutes_ago = timezone.now() - timedelta(minutes=5)
         
         Room.objects.filter(
             is_active=True,
             listeners_count=0,
-            last_active_at__lte=one_minute_ago
+            last_active_at__lte=five_minutes_ago
         ).update(is_active=False)
         
         qs = Room.objects.filter(is_active=True)
@@ -173,7 +174,29 @@ class RoomViewSet(viewsets.ModelViewSet):
             
         room = serializer.save(host=host_profile, title=title)
         
-        # Send notifications to followers
+        # 1. Create room in LiveKit explicitly with 60s timeout
+        from livekit import api
+        import os
+        from asgiref.sync import async_to_sync
+        
+        async def create_lk_room():
+            lkapi = api.LiveKitAPI(os.environ.get('LIVEKIT_API_URL'), os.environ.get('LIVEKIT_API_KEY'), os.environ.get('LIVEKIT_API_SECRET'))
+            try:
+                await lkapi.room.create_room(api.CreateRoomRequest(
+                    name=str(room.id),
+                    empty_timeout=60, # 60 seconds
+                    max_participants=50
+                ))
+            except Exception as lk_err:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to create LiveKit room: {lk_err}")
+            finally:
+                await lkapi.aclose()
+        
+        async_to_sync(create_lk_room)()
+
+        # 2. Send notifications to followers
         NotificationService.send_ghost_room_notification(
             ghost_id=host_profile.id,
             room_id=room.id,
@@ -184,6 +207,10 @@ class RoomViewSet(viewsets.ModelViewSet):
     def join(self, request, pk=None):
         room = self.get_object()
         
+        # 0. Check if user is banned
+        if room.banned_users.filter(id=request.user.id).exists():
+             return Response({"error": "You are banned from this room"}, status=403)
+
         # 1. Get User's Ghost Profile
         user_profile, _ = GhostProfile.objects.get_or_create(
             user=request.user,
@@ -210,26 +237,26 @@ class RoomViewSet(viewsets.ModelViewSet):
         identity = str(request.user.id)
         name = user_profile.display_name
 
-        grant = api.VideoGrants(
-            room_join=True,
-            room=str(room.id),
-            can_publish=is_host, # Only host can speak initially
-            can_subscribe=True,
-            can_publish_data=True, # Allow chat
-            can_update_own_metadata=True, # Allow hand-raise
-        )
-
-        # Metadata: include role, host flag, and ghost_id for follow feature
+        # Metadata: include role, host flag, ghost_id, and moderator flag
+        is_moderator = room.moderators.filter(id=user_profile.id).exists()
         metadata = json.dumps({
             'role': request.user.role, 
             'host': is_host,
+            'is_moderator': is_moderator,
             'ghost_id': str(user_profile.id)
         })
 
         token = api.AccessToken(api_key, api_secret) \
             .with_identity(identity) \
             .with_name(name) \
-            .with_grants(grant) \
+            .with_grants(api.VideoGrants(
+                room_join=True,
+                room=str(room.id),
+                can_publish=is_host or is_moderator, # Host and Mods can speak
+                can_subscribe=True,
+                can_publish_data=True,
+                can_update_own_metadata=True,
+            )) \
             .with_metadata(metadata) \
             .to_jwt()
 
@@ -297,16 +324,26 @@ class RoomViewSet(viewsets.ModelViewSet):
             async def invite_speaker_async():
                 lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
                 try:
-                    # Rebuild metadata from database to preserve role and ghost_id
-                    from .models import GhostProfile
                     meta = {'handRaised': False, 'speaker': True}
-                    try:
-                        target_ghost = GhostProfile.objects.select_related('user').get(user_id=target_identity)
-                        meta['role'] = target_ghost.user.role
-                        meta['host'] = False  # The host wouldn't be invited
-                        meta['ghost_id'] = str(target_ghost.id)
-                    except GhostProfile.DoesNotExist:
-                        pass
+                    
+                    # Only try to look up GhostProfile if it's not a bot identity
+                    if not target_identity.startswith('bot_'):
+                        from .models import GhostProfile
+                        try:
+                            # Try to treat target_identity as a potential UUID
+                            import uuid
+                            try:
+                                uuid.UUID(target_identity)
+                                target_ghost = GhostProfile.objects.select_related('user').get(user_id=target_identity)
+                                meta['role'] = target_ghost.user.role
+                                meta['host'] = False
+                                meta['ghost_id'] = str(target_ghost.id)
+                            except (ValueError, GhostProfile.DoesNotExist):
+                                pass
+                        except Exception:
+                            pass
+                    else:
+                        meta['role'] = 'bot'
 
                     # Grant publish permission + update metadata to clear hand & mark as speaker
                     request_obj = api.UpdateParticipantRequest(
@@ -316,6 +353,7 @@ class RoomViewSet(viewsets.ModelViewSet):
                             can_subscribe=True,
                             can_publish=True,
                             can_publish_data=True,
+                            can_update_metadata=True,
                         ),
                         metadata=json.dumps(meta),
                     )
@@ -341,6 +379,64 @@ class RoomViewSet(viewsets.ModelViewSet):
         except Exception as e:
             import traceback
             traceback.print_exc()
+            return Response({"error": str(e)}, status=500)
+
+    @decorators.action(detail=True, methods=['post'], url_path='demote-speaker')
+    def demote_speaker(self, request, pk=None):
+        """Move a speaker back to listener zone (Host only)"""
+        room = self.get_object()
+        if room.host.user != request.user:
+            return Response({"error": "Only the host can demote speakers"}, status=403)
+
+        target_identity = request.data.get('identity')
+        if not target_identity:
+            return Response({"error": "Target identity required"}, status=400)
+
+        from livekit import api
+        import os
+        api_key = os.environ.get('LIVEKIT_API_KEY')
+        api_secret = os.environ.get('LIVEKIT_API_SECRET')
+        ws_url = os.environ.get('LIVEKIT_API_URL')
+
+        try:
+            from asgiref.sync import async_to_sync
+            async def demote_async():
+                lkapi = api.LiveKitAPI(ws_url, api_key, api_secret)
+                try:
+                    meta = {'handRaised': False, 'speaker': False}
+                    
+                    if not target_identity.startswith('bot_'):
+                        from .models import GhostProfile
+                        try:
+                            import uuid
+                            uuid.UUID(target_identity)
+                            target_ghost = GhostProfile.objects.select_related('user').get(user_id=target_identity)
+                            meta['role'] = target_ghost.user.role
+                            meta['ghost_id'] = str(target_ghost.id)
+                        except (ValueError, GhostProfile.DoesNotExist, Exception):
+                            pass
+                    else:
+                        meta['role'] = 'bot'
+
+                    request_obj = api.UpdateParticipantRequest(
+                        room=str(room.id),
+                        identity=target_identity,
+                        permission=api.ParticipantPermission(
+                            can_subscribe=True,
+                            can_publish=False,
+                            can_publish_data=True,
+                            can_update_metadata=True,
+                        ),
+                        metadata=json.dumps(meta),
+                    )
+                    await lkapi.room.update_participant(request_obj)
+                    return None
+                finally:
+                    await lkapi.aclose()
+
+            async_to_sync(demote_async)()
+            return Response({"message": "Speaker demoted successfully"})
+        except Exception as e:
             return Response({"error": str(e)}, status=500)
     
     @decorators.action(detail=True, methods=['post'], url_path='mute-participant')
@@ -442,6 +538,120 @@ class RoomViewSet(viewsets.ModelViewSet):
             return Response({"message": "Participant kicked successfully"})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+    @decorators.action(detail=True, methods=['post'], url_path='promote-moderator')
+    def promote_moderator(self, request, pk=None):
+        """Promote a participant to Moderator (Owner only, max 3)"""
+        room = self.get_object()
+        
+        # Verify Owner
+        user_profile, _ = GhostProfile.objects.get_or_create(user=request.user)
+        if room.host != user_profile:
+             return Response({"error": "Only the room owner can promote moderators"}, status=403)
+
+        identity = request.data.get('identity')
+        if not identity:
+            return Response({"error": "identity required"}, status=400)
+        
+        from livekit import api
+        import os
+        from asgiref.sync import async_to_sync
+        from django.utils import timezone
+        import json
+        
+        async def promote():
+            lkapi = api.LiveKitAPI(os.environ.get('LIVEKIT_API_URL'), os.environ.get('LIVEKIT_API_KEY'), os.environ.get('LIVEKIT_API_SECRET'))
+            try:
+                # 1. Check current moderator count
+                participants = await lkapi.room.list_participants(api.ListParticipantsRequest(room=str(room.id)))
+                mod_count = 0
+                target_p = None
+                for p in participants.participants:
+                    try:
+                        meta = json.loads(p.metadata)
+                        if meta.get('is_moderator'):
+                            mod_count += 1
+                        if p.identity == identity:
+                            target_p = p
+                    except: pass
+                
+                if mod_count >= 3:
+                    return "limit_reached"
+                
+                if not target_p:
+                    return "not_found"
+                
+                # 2. Update metadata
+                meta = json.loads(target_p.metadata)
+                meta['is_moderator'] = True
+                meta['moderator_assigned_at'] = timezone.now().isoformat()
+                await lkapi.room.update_participant(api.UpdateParticipantRequest(
+                    room=str(room.id),
+                    identity=identity,
+                    metadata=json.dumps(meta)
+                ))
+                
+                # 3. Persist in Django
+                try:
+                    target_ghost = GhostProfile.objects.get(id=identity)
+                    room.moderators.add(target_ghost)
+                except: pass
+                
+                return "success"
+            finally:
+                await lkapi.aclose()
+                
+        res = async_to_sync(promote)()
+        if res == "limit_reached":
+            return Response({"error": "Maximum of 3 moderators reached"}, status=400)
+        if res == "not_found":
+            return Response({"error": "Participant not found"}, status=404)
+        return Response({"message": f"Promoted {identity} to Moderator"})
+
+    @decorators.action(detail=True, methods=['post'], url_path='demote-moderator')
+    def demote_moderator(self, request, pk=None):
+        """Demote a moderator back to speaker (Owner only)"""
+        room = self.get_object()
+        
+        # Verify Owner
+        user_profile, _ = GhostProfile.objects.get_or_create(user=request.user)
+        if room.host != user_profile:
+             return Response({"error": "Only the room owner can demote moderators"}, status=403)
+
+        identity = request.data.get('identity')
+        if not identity:
+            return Response({"error": "identity required"}, status=400)
+            
+        from livekit import api
+        import os
+        from asgiref.sync import async_to_sync
+        import json
+        
+        async def demote():
+            lkapi = api.LiveKitAPI(os.environ.get('LIVEKIT_API_URL'), os.environ.get('LIVEKIT_API_KEY'), os.environ.get('LIVEKIT_API_SECRET'))
+            try:
+                target_p = await lkapi.room.get_participant(api.RoomParticipantIdentity(room=str(room.id), identity=identity))
+                meta = json.loads(target_p.metadata)
+                meta['is_moderator'] = False
+                meta.pop('moderator_assigned_at', None)
+                await lkapi.room.update_participant(api.UpdateParticipantRequest(
+                    room=str(room.id),
+                    identity=identity,
+                    metadata=json.dumps(meta)
+                ))
+                
+                # Remove from Django
+                try:
+                    target_ghost = GhostProfile.objects.get(id=identity)
+                    room.moderators.remove(target_ghost)
+                except: pass
+                
+                return "success"
+            finally:
+                await lkapi.aclose()
+        
+        async_to_sync(demote)()
+        return Response({"message": f"Demoted moderator {identity}"})
     
     @decorators.action(detail=False, methods=['get'], url_path='trending')
     def trending(self, request):
@@ -780,7 +990,19 @@ class AdminRoomActionView(APIView):
             identity = request.data.get('identity')
             if not identity:
                 return Response({"error": "identity required"}, status=400)
-                
+            
+            # 1. Ban user in DB (if identity is a user UUID)
+            try:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                import uuid
+                uuid.UUID(identity) # Check if it's a UUID
+                user_to_ban = User.objects.get(id=identity)
+                room.banned_users.add(user_to_ban)
+            except Exception as e:
+                logger.warning(f"Could not ban user {identity} in DB: {e}")
+
+            # 2. Kick from LiveKit
             from livekit import api
             import os
             from asgiref.sync import async_to_sync
@@ -797,7 +1019,7 @@ class AdminRoomActionView(APIView):
                     await lkapi.aclose()
                     
             async_to_sync(kick_user)()
-            return Response({"message": f"Kicked {identity}"})
+            return Response({"message": f"Kicked and banned {identity}"})
 
         return Response({"error": "Invalid action"}, status=400)
 
@@ -842,7 +1064,13 @@ class LiveKitWebhookView(APIView):
             if room_name:
                 from django.utils import timezone
                 from django.db.models import F
+                from .models import Room
                 
+                try:
+                    room = Room.objects.get(id=room_name)
+                except Room.DoesNotExist:
+                    room = None
+
                 if event_type == 'room_finished':
                     # LiveKit room closed (empty_timeout or manual) -> mark inactive
                     updated = Room.objects.filter(id=room_name, is_active=True).update(
@@ -856,6 +1084,29 @@ class LiveKitWebhookView(APIView):
                         listeners_count=F('listeners_count') + 1,
                         last_active_at=timezone.now()
                     )
+                    # Host Reclamation logic
+                    if room and str(room.host.user.id) == event.participant.identity:
+                        from asgiref.sync import async_to_sync
+                        async def reclaim_host():
+                            lkapi = api.LiveKitAPI(os.environ.get('LIVEKIT_API_URL'), os.environ.get('LIVEKIT_API_KEY'), os.environ.get('LIVEKIT_API_SECRET'))
+                            try:
+                                # Find current moderator and demote
+                                participants = await lkapi.room.list_participants(api.ListParticipantsRequest(room=room_name))
+                                for p in participants.participants:
+                                    try:
+                                        meta = json.loads(p.metadata)
+                                        if meta.get('is_moderator'):
+                                            meta['is_moderator'] = False
+                                            await lkapi.room.update_participant(api.UpdateParticipantRequest(
+                                                room=room_name,
+                                                identity=p.identity,
+                                                metadata=json.dumps(meta)
+                                            ))
+                                            logger.info(f"Demoted interim moderator: {p.identity}")
+                                    except: pass
+                            finally:
+                                await lkapi.aclose()
+                        async_to_sync(reclaim_host)()
                     
                 elif event_type == 'participant_left':
                     Room.objects.filter(id=room_name, is_active=True).update(
@@ -864,6 +1115,50 @@ class LiveKitWebhookView(APIView):
                     )
                     # Fix negative counts
                     Room.objects.filter(id=room_name, listeners_count__lt=0).update(listeners_count=0)
+                    
+                    # Host Migration logic
+                    if room and str(room.host.user.id) == event.participant.identity:
+                        from asgiref.sync import async_to_sync
+                        async def migrate_host():
+                            lkapi = api.LiveKitAPI(os.environ.get('LIVEKIT_API_URL'), os.environ.get('LIVEKIT_API_KEY'), os.environ.get('LIVEKIT_API_SECRET'))
+                            try:
+                                participants = await lkapi.room.list_participants(api.ListParticipantsRequest(room=room_name))
+                                
+                                mods = []
+                                speakers = []
+                                
+                                for p in participants.participants:
+                                    try:
+                                        meta = json.loads(p.metadata)
+                                        if meta.get('is_moderator'):
+                                            mods.append((p, meta.get('moderator_assigned_at', '')))
+                                        elif meta.get('speaker'):
+                                            speakers.append(p)
+                                    except: pass
+                                
+                                target = None
+                                if mods:
+                                    # Priority 1: Existing manually assigned moderators (oldest assignment first)
+                                    mods.sort(key=lambda x: x[1])
+                                    target = mods[0][0]
+                                elif speakers:
+                                    # Priority 2: Oldest speaker fallback
+                                    speakers.sort(key=lambda x: x.joined_at)
+                                    target = speakers[0]
+                                    # Mark them as interim moderator
+                                    meta = json.loads(target.metadata)
+                                    meta['is_moderator'] = True
+                                    await lkapi.room.update_participant(api.UpdateParticipantRequest(
+                                        room=room_name,
+                                        identity=target.identity,
+                                        metadata=json.dumps(meta)
+                                    ))
+
+                                if target:
+                                    logger.info(f"Host migrated to: {target.identity}")
+                            finally:
+                                await lkapi.aclose()
+                        async_to_sync(migrate_host)()
             
             # 3. Broadcast to Admin Dashboard via WebSocket (non-critical)
             payload = {

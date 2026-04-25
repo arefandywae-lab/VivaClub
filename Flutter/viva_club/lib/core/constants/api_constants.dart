@@ -23,10 +23,16 @@ class ApiConstants {
       '/api/community/rooms/$roomId/leave/';
   static String inviteSpeaker(String roomId) =>
       '/api/community/rooms/$roomId/invite/';
+  static String demoteSpeaker(String roomId) =>
+      '/api/community/rooms/$roomId/demote-speaker/';
   static String muteParticipant(String roomId) =>
       '/api/community/rooms/$roomId/mute-participant/';
   static String kickParticipant(String roomId) =>
       '/api/community/rooms/$roomId/kick-participant/';
+  static String promoteModerator(String roomId) =>
+      '/api/community/rooms/$roomId/promote-moderator/';
+  static String demoteModerator(String roomId) =>
+      '/api/community/rooms/$roomId/demote-moderator/';
 
   // Booking Endpoints
   static const String appointments = '/api/bookings/slots/';

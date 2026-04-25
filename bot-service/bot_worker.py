@@ -67,6 +67,40 @@ class BotWorker:
         self.is_connected = True
         self.is_muted = True
 
+        # Auto-publish if invited to speak (metadata change)
+        @self.room.on("participant_metadata_changed")
+        def on_metadata_changed(participant: rtc.Participant, old_metadata: str):
+            if not self.room or participant != self.room.local_participant:
+                return
+                
+            meta = participant.metadata
+            logger.info(f"Bot {self.name}: metadata changed: {meta}")
+            
+            # Robust check for speaker status
+            is_speaker = meta and '"speaker":' in meta.replace(' ', '') and 'true' in meta.lower()
+            was_speaker = old_metadata and '"speaker":' in old_metadata.replace(' ', '') and 'true' in old_metadata.lower()
+
+            if is_speaker and not was_speaker:
+                logger.info(f"Bot {self.name}: invited to speak! Auto-publishing...")
+                if self.is_playing and self._publication:
+                    asyncio.create_task(self.set_muted(False))
+            
+            if meta and '"handRaised":false' in meta.replace(' ', '') and '"handRaised":true' in old_metadata.replace(' ', ''):
+                 logger.info(f"Bot {self.name}: hand lowered")
+
+        # Handle mute/unmute from host (Server)
+        @self.room.on("track_muted")
+        def on_track_muted(publication: rtc.TrackPublication, participant: rtc.Participant):
+            if self.room and participant == self.room.local_participant:
+                logger.info(f"Bot {self.name}: track {publication.sid} muted by host")
+                self.is_muted = True
+
+        @self.room.on("track_unmuted")
+        def on_track_unmuted(publication: rtc.TrackPublication, participant: rtc.Participant):
+            if self.room and participant == self.room.local_participant:
+                logger.info(f"Bot {self.name}: track {publication.sid} unmuted by host")
+                self.is_muted = False
+
         logger.info(f"Bot {self.name}: connected to room {room_id} ✓")
 
     async def disconnect(self):
@@ -252,6 +286,12 @@ class BotWorker:
                     samples_per_channel=SAMPLES_PER_FRAME,
                 )
 
+                if self.is_muted:
+                    # Skip capturing frame if muted, but still read from ffmpeg to keep sync
+                    # Alternatively, we could just let LiveKit handle it, but this is safer
+                    await asyncio.sleep(FRAME_DURATION)
+                    continue
+
                 await self._audio_source.capture_frame(frame)
                 frames_sent += 1
 
@@ -281,4 +321,22 @@ class BotWorker:
             "is_playing": self.is_playing,
             "is_muted": self.is_muted,
             "current_url": self.current_url,
+            "is_hand_raised": self.is_hand_raised(),
         }
+
+    def is_hand_raised(self) -> bool:
+        """Check if hand is raised via metadata."""
+        if not self.room or not self.room.local_participant:
+            return False
+        meta = self.room.local_participant.metadata
+        return meta and '"handRaised": true' in meta
+
+    async def set_hand_raised(self, raised: bool):
+        """Raise or lower hand by updating metadata."""
+        if not self.room or not self.room.local_participant:
+            return
+        
+        # Combine role and handRaised in metadata
+        meta = '{"role": "bot", "handRaised": %s}' % ("true" if raised else "false")
+        await self.room.local_participant.set_metadata(meta)
+        logger.info(f"Bot {self.name}: hand {'raised' if raised else 'lowered'}")

@@ -98,20 +98,7 @@ class _RoomListScreenState extends State<RoomListScreen>
             Expanded(
               child: BlocConsumer<RoomBloc, RoomState>(
                 listener: (context, state) {
-                  if (state is RoomJoined) {
-                    _isJoining = false;
-                    if (!mounted) return;
-                    context.pushReplacement(
-                      '/live_room',
-                      extra: {
-                        'token': state.token,
-                        'url': state.url,
-                        'room_id': state.roomId,
-                        'title': state.title,
-                        'is_host': state.isHost,
-                      },
-                    );
-                  } else if (state is RoomFailure) {
+                  if (state is RoomFailure) {
                     _isJoining = false;
                     ScaffoldMessenger.of(
                       context,
@@ -152,17 +139,27 @@ class _RoomListScreenState extends State<RoomListScreen>
         ),
       ),
       floatingActionButton: _selectedCategory != null
-          ? FloatingActionButton.extended(
-              onPressed: () => context.push('/create_room'),
-              backgroundColor: AppTheme.butteryYellow,
-              label: Text(
-                'Create Room',
-                style: TextStyle(
-                  color: AppTheme.textDark,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              icon: Icon(Icons.add, color: AppTheme.textDark),
+          ? BlocBuilder<ProfileBloc, ProfileState>(
+              builder: (context, profileState) {
+                final isDoctor = (profileState is ProfileLoaded) && 
+                    (profileState.user['role'] == 'doctor' || profileState.user['is_staff'] == true);
+                
+                return FloatingActionButton.extended(
+                  onPressed: () => context.push('/create_room'),
+                  backgroundColor: isDoctor ? const Color(0xFF0D9488) : AppTheme.butteryYellow,
+                  label: Text(
+                    isDoctor ? 'Host Medical Room' : 'Create Room',
+                    style: TextStyle(
+                      color: isDoctor ? Colors.white : AppTheme.textDark,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  icon: Icon(
+                    isDoctor ? Icons.medical_services_outlined : Icons.add, 
+                    color: isDoctor ? Colors.white : AppTheme.textDark
+                  ),
+                );
+              },
             )
           : null,
     );
@@ -182,7 +179,13 @@ class _RoomListScreenState extends State<RoomListScreen>
           if (_selectedCategory != null)
             IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => setState(() => _selectedCategory = null),
+              onPressed: () {
+                setState(() => _selectedCategory = null);
+                context.read<RoomBloc>().add(RoomLoad(
+                  search: _searchController.text.trim(),
+                  sort: _sortMode,
+                ));
+              },
             ),
           Expanded(
             child: Column(
@@ -309,7 +312,11 @@ class _RoomListScreenState extends State<RoomListScreen>
                   Navigator.pop(ctx);
                   setState(() {});
                   context.read<RoomBloc>().add(
-                    RoomLoad(search: val.trim(), sort: _sortMode),
+                    RoomLoad(
+                      search: val.trim(),
+                      category: _selectedCategory,
+                      sort: _sortMode
+                    ),
                   );
                 },
                 decoration: InputDecoration(
@@ -430,6 +437,7 @@ class _RoomListScreenState extends State<RoomListScreen>
                     context.read<RoomBloc>().add(
                       RoomLoad(
                         search: _searchController.text.trim(),
+                        category: _selectedCategory,
                         sort: _sortMode,
                       ),
                     );
@@ -498,7 +506,16 @@ class _RoomListScreenState extends State<RoomListScreen>
             itemBuilder: (context, index) {
               final cat = _categories[index];
               return GestureDetector(
-                onTap: () => setState(() => _selectedCategory = cat['id']),
+                onTap: () {
+                  setState(() => _selectedCategory = cat['id']);
+                  context.read<RoomBloc>().add(
+                    RoomLoad(
+                      search: _searchController.text.trim(),
+                      category: cat['id'],
+                      sort: _sortMode,
+                    ),
+                  );
+                },
                 child: Container(
                   decoration: BoxDecoration(
                     color: cat['color'],
@@ -827,13 +844,32 @@ class _RoomCardState extends State<_RoomCard> {
                       );
                     },
                   ),
-                if (widget.hostRole == 'doctor' ||
-                    widget.hostRole == 'admin') // Official Badge
+                if (widget.hostRole == 'doctor')
                   Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 8.w,
-                      vertical: 4.h,
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D9488),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.verified_user, color: Colors.white, size: 10),
+                        SizedBox(width: 4.w),
+                        Text(
+                          'DOCTOR',
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (widget.hostRole == 'admin')
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       color: AppTheme.skyBlue,
                       borderRadius: BorderRadius.circular(8.r),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:viva_club/core/theme/app_theme.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/utils/emoji_utils.dart';
 import '../bloc/profile_bloc.dart';
 
@@ -42,6 +44,12 @@ class _ProfileScreenState extends State<ProfileScreen>
           }
 
           if (state is ProfileFailure) {
+            // Auto logout if session expired for better UX (especially for demos)
+            if (state.message.contains('Session expired')) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<AuthBloc>().add(AuthLogoutRequested());
+              });
+            }
             return Center(
               child: Padding(
                 padding: EdgeInsets.all(32.w),
@@ -96,7 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Column(
       children: [
         _buildHeader(displayName, memberSince, state.trustScore),
-        SizedBox(height: 4.h), // Reduced margin to move tabs closer
+        SizedBox(height: 16.h),
         _buildTabBar(),
         Expanded(
           child: TabBarView(
@@ -271,14 +279,42 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           SizedBox(height: 20.h),
           // Quick Stats
-          Row(
-            children: [
-              _buildStatCard('TRUST', '🛡️', score.toString()),
-              SizedBox(width: 12.w),
-              _buildStatCard('MOOD', '🙂', 'Good'),
-              SizedBox(width: 12.w),
-              _buildStatCard('STREAK', '🔥', '5 Days'),
-            ],
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              if (state is AuthAuthenticated) {
+                final mood = state.user['current_mood'] ?? 'UNKNOWN';
+                final streak = state.user['streak_count'] ?? 0;
+                
+                String moodIcon = '🙂';
+                String moodDisplay = mood;
+                Color moodColor = AppTheme.textDark;
+                
+                if (mood == 'SEVERE') {
+                  moodIcon = '😞';
+                  moodDisplay = 'Severe';
+                  moodColor = Colors.red;
+                } else if (mood == 'MODERATE') {
+                  moodIcon = '😐';
+                  moodDisplay = 'Moderate';
+                  moodColor = Colors.orange;
+                } else if (mood == 'LOW') {
+                  moodIcon = '😊';
+                  moodDisplay = 'Low';
+                  moodColor = Colors.green;
+                }
+
+                return Row(
+                  children: [
+                    _buildStatCard('TRUST', '🛡️', score.toString()),
+                    SizedBox(width: 12.w),
+                    _buildStatCard('MOOD', moodIcon, moodDisplay, valueColor: moodColor),
+                    SizedBox(width: 12.w),
+                    _buildStatCard('STREAK', '🔥', '$streak'),
+                  ],
+                );
+              }
+              return const SizedBox();
+            },
           ),
         ],
       ),
@@ -294,7 +330,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }) {
     return Expanded(
       child: Container(
-        padding: EdgeInsets.all(12.w),
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 12.h),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(16.r),
@@ -312,7 +348,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             Text(
               label,
               style: TextStyle(
-                fontSize: 10.sp,
+                fontSize: 9.sp,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textGrey,
                 letterSpacing: 1,
@@ -321,7 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             SizedBox(height: 4.h),
             Row(
               children: [
-                Text(icon, style: TextStyle(fontSize: 14.sp)),
+                Text(icon, style: TextStyle(fontSize: 12.sp)),
                 SizedBox(width: 4.w),
                 Expanded(
                   child: Column(
@@ -330,16 +366,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                       Text(
                         value,
                         style: TextStyle(
-                          fontSize: 14.sp,
+                          fontSize: 12.sp,
                           fontWeight: FontWeight.bold,
                           color: valueColor ?? AppTheme.textDark,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (subtitle != null)
                         Text(
                           subtitle,
                           style: TextStyle(
-                            fontSize: 10.sp,
+                            fontSize: 9.sp,
                             color: valueColor ?? AppTheme.textGrey,
                             fontWeight: FontWeight.bold,
                           ),
@@ -435,147 +472,135 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildAppointmentCard(Map<String, dynamic> apt) {
-    final doctor = apt['doctor_details'] ?? {};
-    final doctorName = doctor['display_name'] ?? doctor['username'] ?? 'Doctor';
-    final specialty = doctor['specialty'] ?? '';
-    final startTime = apt['start_time'] ?? '';
-    final status = apt['status'] ?? '';
-    final isConfirmed = status == 'confirmed';
+    try {
+      final doctor = apt['doctor_detail'] ?? {};
+      final doctorName = doctor['display_name'] ?? doctor['username'] ?? 'Doctor';
+      final specialty = doctor['specialty'] ?? '';
+      
+      final slotDetail = apt['slot_detail'] ?? {};
+      final startTimeStr = slotDetail['start_time'] ?? '';
+      final status = apt['status'] ?? 'UNKNOWN';
+      final isConfirmed = status == 'CONFIRMED';
+      final isPending = status == 'PENDING';
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48.w,
-                height: 48.w,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  EmojiUtils.getEmojiForName(doctorName),
-                  style: TextStyle(fontSize: 24.sp),
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      doctorName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.sp,
-                      ),
-                    ),
-                    if (specialty.isNotEmpty)
-                      Text(
-                        specialty,
-                        style: TextStyle(
-                          color: AppTheme.textGrey,
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (isConfirmed)
+      return Container(
+        margin: EdgeInsets.only(bottom: 16.h),
+        padding: EdgeInsets.all(20.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24.r),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  width: 48.w,
+                  height: 48.w,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8.r),
+                    color: Colors.grey.shade100,
+                    shape: BoxShape.circle,
                   ),
                   child: Text(
-                    'Confirmed',
-                    style: TextStyle(
-                      color: Colors.green.shade700,
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    EmojiUtils.getEmojiForName(doctorName),
+                    style: TextStyle(fontSize: 24.sp),
                   ),
-                )
-              else
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doctorName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.sp,
+                        ),
+                      ),
+                      if (specialty.isNotEmpty)
+                        Text(
+                          specialty,
+                          style: TextStyle(
+                            color: AppTheme.textGrey,
+                            fontSize: 12.sp,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: isConfirmed ? Colors.green.shade50 : Colors.orange.shade50,
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Text(
                     status.toUpperCase(),
                     style: TextStyle(
-                      color: Colors.orange.shade700,
+                      color: isConfirmed ? Colors.green.shade700 : Colors.orange.shade700,
                       fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-            ],
-          ),
-          SizedBox(height: 16.h),
-          Row(
-            children: [
-              Icon(Icons.calendar_today, size: 14.sp, color: AppTheme.textGrey),
-              SizedBox(width: 8.w),
-              Text(
-                _formatDateTime(startTime),
-                style: TextStyle(fontSize: 12.sp, color: AppTheme.textDark),
-              ),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          Row(
-            children: [
-              Icon(Icons.videocam, size: 14.sp, color: AppTheme.textGrey),
-              SizedBox(width: 8.w),
-              Text(
-                'Video Call',
-                style: TextStyle(fontSize: 12.sp, color: AppTheme.textDark),
-              ),
-            ],
-          ),
-          if (isConfirmed) ...[
-            SizedBox(height: 16.h),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Navigate to video call with room ID
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.skyBlue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 12.h),
-                ),
-                child: const Text('Join Session'),
-              ),
+              ],
             ),
+            SizedBox(height: 16.h),
+            Row(
+              children: [
+                Icon(Icons.calendar_today, size: 14.sp, color: AppTheme.textGrey),
+                SizedBox(width: 8.w),
+                Text(
+                  _formatDateTime(startTimeStr),
+                  style: TextStyle(fontSize: 12.sp, color: AppTheme.textDark),
+                ),
+              ],
+            ),
+            if (isConfirmed) ...[
+              SizedBox(height: 16.h),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    context.push('/clinical/video-call', extra: {
+                      'url': 'wss://vivaclub-c8l1bt1p.livekit.cloud',
+                      'token': 'temporary_token',
+                      'room_name': 'appointment_${apt['id']}',
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.skyBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    elevation: 0,
+                  ),
+                  child: const Text('Join Session'),
+                ),
+              ),
+            ],
           ],
-        ],
-      ),
-    );
+        ),
+      );
+    } catch (e) {
+      return Container(
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(16)),
+        child: Text('Error rendering: $e', style: const TextStyle(color: Colors.red)),
+      );
+    }
   }
 
   String _formatDateTime(String isoDate) {

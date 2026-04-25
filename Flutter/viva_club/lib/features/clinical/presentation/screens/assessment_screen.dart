@@ -6,6 +6,7 @@ import '../bloc/clinical_event.dart';
 import '../bloc/clinical_state.dart';
 import '../clinical_constants.dart';
 import 'package:go_router/go_router.dart';
+import 'package:viva_club/features/auth/presentation/bloc/auth_bloc.dart';
 
 class AssessmentScreen extends StatefulWidget {
   const AssessmentScreen({super.key});
@@ -16,12 +17,33 @@ class AssessmentScreen extends StatefulWidget {
 
 class _AssessmentScreenState extends State<AssessmentScreen> {
   final PageController _pageController = PageController();
+  
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ClinicalBloc>().add(const ResetAssessment());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mental Health Assessment'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (_pageController.page! > 0) {
+              _pageController.previousPage(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            } else {
+              context.pop();
+            }
+          },
+        ),
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black,
@@ -29,10 +51,21 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
       body: BlocConsumer<ClinicalBloc, ClinicalState>(
         listener: (context, state) {
           if (state.status == ClinicalStatus.success && state.riskLevel != null) {
+            // Refresh profile to get updated Mood and Streak
+            context.read<AuthBloc>().add(ProfileRefreshRequested());
             context.push('/clinical/result');
+          }
+          if (state.status == ClinicalStatus.failure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.errorMessage ?? 'Failed to submit assessment')),
+            );
           }
         },
         builder: (context, state) {
+          if (state.status == ClinicalStatus.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
           final progress = (state.currentQuestionIndex) / ClinicalConstants.phq9Questions.length;
 
           return Column(
@@ -63,6 +96,9 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
                   controller: _pageController,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: ClinicalConstants.phq9Questions.length,
+                  onPageChanged: (index) {
+                    context.read<ClinicalBloc>().add(QuestionIndexChanged(index));
+                  },
                   itemBuilder: (context, index) {
                     return _buildQuestionCard(index, state);
                   },

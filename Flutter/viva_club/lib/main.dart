@@ -15,10 +15,24 @@ import 'features/clinical/data/clinical_repository.dart';
 import 'features/clinical/presentation/bloc/clinical_bloc.dart';
 import 'features/chat/data/chat_repository.dart';
 import 'features/chat/presentation/bloc/chat_bloc.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'core/services/notification_service.dart';
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // Initialize notifications and request permission
+    await NotificationService().initialize();
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+  }
 
   // Initialize Auth dependencies at root to share with Router
   final authRepository = AuthRepository();

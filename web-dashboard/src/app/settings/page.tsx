@@ -95,6 +95,40 @@ export default function SettingsPage() {
                 </Card>
             </div>
 
+            {/* Push Notification Test */}
+            <Card className="border-blue-200 bg-blue-50/10">
+                <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center text-lg text-blue-700">
+                        <Activity className="h-5 w-5 mr-2" />
+                        Push Notification System
+                    </CardTitle>
+                    <CardDescription className="text-blue-600/70">
+                        Send a test notification to all registered devices to verify FCM connectivity.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant="default"
+                            className="bg-blue-600 hover:bg-blue-700 gap-2"
+                            onClick={async () => {
+                                try {
+                                    const data = await apiFetch("/auth/admin/test-push/", { method: "POST" });
+                                    alert("Test notification sent! Check your mobile devices.");
+                                } catch (error) {
+                                    alert("Failed to send notification. Check server logs.");
+                                }
+                            }}
+                        >
+                            <Webhook className="h-4 w-4" /> Send Test Notification
+                        </Button>
+                        <p className="text-xs text-slate-400 italic">
+                            * This will trigger a broadcast to all users with active Firebase tokens.
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Danger Zone */}
             <Card className="border-red-200 bg-red-50/30">
                 <CardHeader className="pb-4">

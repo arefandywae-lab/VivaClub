@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Play, Square, Mic, MicOff, LogOut, Trash2, Plus, Loader2, Music, Radio } from "lucide-react";
+import { Bot, Play, Square, Mic, MicOff, LogOut, Trash2, Plus, Loader2, Music, Radio, Hand } from "lucide-react";
 
 const BOT_API = process.env.NEXT_PUBLIC_BOT_API_URL || "http://localhost:9090";
 
@@ -193,6 +193,9 @@ export default function BotsPage() {
                                                 ) : (
                                                     <Badge variant="outline" className="text-emerald-600 border-emerald-200">Live</Badge>
                                                 )}
+                                                {bot.is_hand_raised && (
+                                                    <Badge className="bg-orange-100 text-orange-700 border-orange-200">🖐️ Hand Up</Badge>
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell>
@@ -234,6 +237,15 @@ export default function BotsPage() {
                                                         <Square className="h-3 w-3" /> Stop
                                                     </Button>
                                                 )}
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className={`h-8 gap-1 ${bot.is_hand_raised ? 'bg-orange-50 text-orange-600 border-orange-200' : 'text-slate-600 border-slate-200'}`}
+                                                    onClick={() => handleAction(bot.bot_id, bot.is_hand_raised ? "lower-hand" : "hand-raise")}
+                                                    disabled={actionLoading?.startsWith(`${bot.bot_id}-`)}
+                                                >
+                                                    <Hand className={`h-3 w-3 ${bot.is_hand_raised ? 'fill-orange-500' : ''}`} /> {bot.is_hand_raised ? 'Lower' : 'Raise'}
+                                                </Button>
                                                 <Button
                                                     size="sm"
                                                     variant="outline"

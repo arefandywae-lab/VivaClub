@@ -11,10 +11,11 @@ abstract class RoomEvent extends Equatable {
 
 class RoomLoad extends RoomEvent {
   final String? search;
+  final String? category;
   final String sort;
-  const RoomLoad({this.search, this.sort = 'recent'});
+  const RoomLoad({this.search, this.category, this.sort = 'recent'});
   @override
-  List<Object> get props => [search ?? '', sort];
+  List<Object> get props => [search ?? '', category ?? '', sort];
 }
 
 class RoomCreate extends RoomEvent {
@@ -86,6 +87,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     try {
       final rooms = await _communityRepository.getRooms(
         search: event.search,
+        category: event.category,
         sort: event.sort,
       );
       emit(RoomLoaded(rooms));

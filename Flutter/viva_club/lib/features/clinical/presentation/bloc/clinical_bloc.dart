@@ -11,6 +11,8 @@ class ClinicalBloc extends Bloc<ClinicalEvent, ClinicalState> {
     on<AssessmentSubmitted>(_onAssessmentSubmitted);
     on<SOSRequested>(_onSOSRequested);
     on<QueueStatusRequested>(_onQueueStatusRequested);
+    on<QuestionIndexChanged>((event, emit) => emit(state.copyWith(currentQuestionIndex: event.index)));
+    on<ResetAssessment>((event, emit) => emit(const ClinicalState()));
   }
 
   void _onAssessmentAnswered(AssessmentAnswered event, Emitter<ClinicalState> emit) {
@@ -20,10 +22,12 @@ class ClinicalBloc extends Bloc<ClinicalEvent, ClinicalState> {
     int newScore = 0;
     newAnswers.forEach((key, value) => newScore += value);
 
+    final isLastQuestion = event.questionIndex >= 8; // PHQ-9 has 9 questions (index 0-8)
+    
     emit(state.copyWith(
       answers: newAnswers,
       totalScore: newScore,
-      currentQuestionIndex: event.questionIndex + 1,
+      currentQuestionIndex: isLastQuestion ? event.questionIndex : event.questionIndex + 1,
     ));
   }
 
@@ -73,7 +77,22 @@ class ClinicalBloc extends Bloc<ClinicalEvent, ClinicalState> {
   Future<void> _onQueueStatusRequested(QueueStatusRequested event, Emitter<ClinicalState> emit) async {
     try {
       final queue = await clinicalRepository.getQueuePosition();
-      emit(state.copyWith(queuePosition: queue['position']));
+      
+      if (queue['status'] == 'ongoing') {
+        emit(state.copyWith(
+          queuePosition: 0,
+          sosRoomData: {
+            'url': queue['url'] ?? 'wss://vivaclubs.site',
+            'token': queue['livekit_token'],
+            'room_name': queue['room_name'],
+          },
+        ));
+      } else {
+        emit(state.copyWith(
+          queuePosition: queue['position'] ?? 0,
+          sosRoomData: null,
+        ));
+      }
     } catch (e) {
       // Background update failure doesn't necessarily mean state failure
     }

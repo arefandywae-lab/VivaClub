@@ -26,7 +26,8 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'phone_number', 'role', 
             'display_name', 'license_id', 'specialty', 'verified_at', 
-            'is_online', 'is_staff', 'is_active', 'is_email_verified', 'ghost_profile'
+            'is_online', 'is_staff', 'is_active', 'is_email_verified', 'ghost_profile',
+            'current_mood', 'streak_count', 'last_assessment_date'
         ]
         read_only_fields = ['id', 'role', 'verified_at', 'is_online', 'is_staff', 'is_active', 'is_email_verified', 'ghost_profile']
 

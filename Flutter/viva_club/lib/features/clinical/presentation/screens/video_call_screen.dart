@@ -23,6 +23,7 @@ class VideoCallScreen extends StatefulWidget {
 class _VideoCallScreenState extends State<VideoCallScreen> {
   Room? _room;
   List<Participant> _participants = [];
+  EventsListener<RoomEvent>? _listener;
 
   @override
   void initState() {
@@ -32,17 +33,70 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   Future<void> _connect() async {
     try {
+      debugPrint('Connecting to LiveKit...');
+      debugPrint('URL: ${widget.url}');
+      debugPrint('Room: ${widget.roomName}');
+      debugPrint('Token prefix: ${widget.token.substring(0, 10)}...');
+
       final room = Room();
       _room = room;
       
-      room.addListener(_onRoomUpdate);
+      _listener = room.createListener();
+      _listener!
+        ..on<TrackSubscribedEvent>((event) {
+          debugPrint('Track Subscribed: ${event.track.kind}');
+          _onRoomUpdate();
+        })
+        ..on<TrackUnsubscribedEvent>((event) {
+          debugPrint('Track Unsubscribed: ${event.track.kind}');
+          _onRoomUpdate();
+        })
+        ..on<ParticipantConnectedEvent>((event) {
+          debugPrint('Participant Connected: ${event.participant.identity}');
+          _onRoomUpdate();
+        })
+        ..on<ParticipantDisconnectedEvent>((event) {
+          debugPrint('Participant Disconnected: ${event.participant.identity}');
+          _onRoomUpdate();
+        });
 
-      await room.connect(widget.url, widget.token, connectOptions: const ConnectOptions(autoSubscribe: true));
+      await room.connect(
+        widget.url,
+        widget.token,
+        connectOptions: const ConnectOptions(
+          autoSubscribe: true,
+        ),
+        roomOptions: RoomOptions(
+          adaptiveStream: true,
+          dynacast: true,
+          defaultVideoPublishOptions: const VideoPublishOptions(
+            simulcast: true,
+            videoEncoding: VideoEncoding(
+              maxBitrate: 500000,
+              maxFramerate: 24,
+            ),
+          ),
+          defaultAudioPublishOptions: const AudioPublishOptions(
+            dtx: true,
+          ),
+        ),
+      );
       
       final local = room.localParticipant;
       if (local != null) {
-        await local.setCameraEnabled(true);
-        await local.setMicrophoneEnabled(true);
+        try {
+          await local.setCameraEnabled(true, cameraCaptureOptions: CameraCaptureOptions(
+            params: VideoParametersPresets.h480_43,
+          ));
+        } catch (e) {
+          debugPrint('Failed to enable camera: $e');
+        }
+        
+        try {
+          await local.setMicrophoneEnabled(true);
+        } catch (e) {
+          debugPrint('Failed to enable microphone: $e');
+        }
       }
       
       _onRoomUpdate();
@@ -59,17 +113,28 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   void _onRoomUpdate() {
     final room = _room;
     if (room == null || room.localParticipant == null) return;
-    setState(() {
-      _participants = [
-        room.localParticipant!,
-        ...room.remoteParticipants.values,
-      ];
-    });
+    
+    debugPrint('Room Update: ${room.remoteParticipants.length} remote participants');
+    for (var p in room.remoteParticipants.values) {
+      debugPrint('Participant: ${p.identity}, Tracks: ${p.videoTrackPublications.length}');
+      for (var t in p.videoTrackPublications) {
+        debugPrint(' - Track: ${t.sid}, Subscribed: ${t.subscribed}, Muted: ${t.muted}');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _participants = [
+          room.localParticipant!,
+          ...room.remoteParticipants.values,
+        ];
+      });
+    }
   }
 
   @override
   void dispose() {
-    _room?.removeListener(_onRoomUpdate);
+    _listener?.dispose();
     _room?.disconnect();
     _room?.dispose();
     super.dispose();

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "25966670578",
+    "project_id": "vivaclub-c5f16",
+    "storage_bucket": "vivaclub-c5f16.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:25966670578:android:1507c9d73931341b69d66b",
+        "android_client_info": {
+          "package_name": "com.vivaclub.viva_club"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9YK7fszM0-fsmk8qMA_1cvMq7T15IN-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

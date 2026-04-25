@@ -86,7 +86,7 @@ class AssessmentResultScreen extends StatelessWidget {
                 SizedBox(height: 16.h),
                 
                 TextButton(
-                  onPressed: () => context.go('/home'),
+                  onPressed: () => context.go('/dashboard'),
                   child: Text(
                     'Back to Home',
                     style: TextStyle(color: Colors.grey[600], fontSize: 16.sp),

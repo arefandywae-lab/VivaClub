@@ -9,6 +9,7 @@ class ClinicalState extends Equatable {
   final int totalScore;
   final String? riskLevel;
   final int queuePosition;
+  final Map<String, dynamic>? sosRoomData;
   final String? errorMessage;
 
   const ClinicalState({
@@ -18,6 +19,7 @@ class ClinicalState extends Equatable {
     this.totalScore = 0,
     this.riskLevel,
     this.queuePosition = 0,
+    this.sosRoomData,
     this.errorMessage,
   });
 
@@ -28,6 +30,7 @@ class ClinicalState extends Equatable {
     int? totalScore,
     String? riskLevel,
     int? queuePosition,
+    Map<String, dynamic>? sosRoomData,
     String? errorMessage,
   }) {
     return ClinicalState(
@@ -37,6 +40,7 @@ class ClinicalState extends Equatable {
       totalScore: totalScore ?? this.totalScore,
       riskLevel: riskLevel ?? this.riskLevel,
       queuePosition: queuePosition ?? this.queuePosition,
+      sosRoomData: sosRoomData ?? this.sosRoomData,
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
@@ -49,6 +53,7 @@ class ClinicalState extends Equatable {
         totalScore,
         riskLevel,
         queuePosition,
+        sosRoomData,
         errorMessage,
       ];
 }

@@ -10,7 +10,7 @@ class UserMinimalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'display_name', 'specialty', 'is_online', 'avg_rating', 'review_count']
+        fields = ['id', 'display_name', 'specialty', 'is_online', 'avg_rating', 'review_count', 'current_mood', 'streak_count']
 
 class AssessmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,6 +39,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
     doctor_detail = UserMinimalSerializer(source='doctor', read_only=True)
     patient_detail = UserMinimalSerializer(source='patient', read_only=True)
     slot_detail = TimeSlotSerializer(source='slot', read_only=True)
+    
+    # Aliases for Dashboard Compatibility
+    patient_name = serializers.CharField(source='patient.display_name', read_only=True)
+    doctor_name = serializers.CharField(source='doctor.display_name', read_only=True)
+    scheduled_at = serializers.DateTimeField(source='slot.start_time', read_only=True)
 
     class Meta:
         model = Appointment

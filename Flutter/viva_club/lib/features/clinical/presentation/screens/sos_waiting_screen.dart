@@ -23,8 +23,8 @@ class _SOSWaitingScreenState extends State<SOSWaitingScreen> with SingleTickerPr
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
 
     // Poll queue status every 5 seconds
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
@@ -45,16 +45,23 @@ class _SOSWaitingScreenState extends State<SOSWaitingScreen> with SingleTickerPr
       backgroundColor: const Color(0xFFF8F9FE),
       body: BlocConsumer<ClinicalBloc, ClinicalState>(
         listener: (context, state) {
-          // If a doctor accepts, the backend or a notification would move us to the call screen
-          // For now, let's assume we monitor a state change if we had a dedicated "active_sos" field
+          if (state.sosRoomData != null) {
+            _timer?.cancel();
+            context.pushReplacement('/clinical/video-call', extra: {
+              'url': state.sosRoomData!['url'],
+              'token': state.sosRoomData!['token'],
+              'room_name': state.sosRoomData!['room_name'],
+            });
+          }
         },
         builder: (context, state) {
           return Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 32.w),
+            padding: EdgeInsets.fromLTRB(32.w, 80.h, 32.w, 40.h),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const Spacer(),
+                // Centered Pulse Animation
                 Stack(
                   alignment: Alignment.center,
                   children: [
@@ -90,13 +97,16 @@ class _SOSWaitingScreenState extends State<SOSWaitingScreen> with SingleTickerPr
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 16.sp, color: Colors.grey[600], height: 1.5),
                 ),
-                SizedBox(height: 48.h),
                 
+                const Spacer(),
+                
+                // Fixed at bottom: Queue Position
                 Container(
+                  width: double.infinity,
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(24.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.05),
@@ -106,7 +116,6 @@ class _SOSWaitingScreenState extends State<SOSWaitingScreen> with SingleTickerPr
                     ],
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const CircularProgressIndicator(strokeWidth: 3, color: Colors.redAccent),
                       SizedBox(width: 20.w),
@@ -127,7 +136,9 @@ class _SOSWaitingScreenState extends State<SOSWaitingScreen> with SingleTickerPr
                   ),
                 ),
                 
-                SizedBox(height: 80.h),
+                SizedBox(height: 24.h),
+                
+                // Fixed at bottom: Cancel Button
                 TextButton(
                   onPressed: () => context.pop(),
                   child: Text(
@@ -148,8 +159,8 @@ class _SOSWaitingScreenState extends State<SOSWaitingScreen> with SingleTickerPr
       animation: _controller,
       builder: (context, child) {
         return Container(
-          width: (120.w + (100.w * _controller.value)) * scale,
-          height: (120.w + (100.w * _controller.value)) * scale,
+          width: (120.w + (40.w * _controller.value)) * scale,
+          height: (120.w + (40.w * _controller.value)) * scale,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.redAccent.withOpacity((1 - _controller.value) * 0.3 * scale),

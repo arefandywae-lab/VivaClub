@@ -13,9 +13,19 @@ export default function UsersPage() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+    const [filter, setFilter] = useState<'all' | 'doctor' | 'online' | 'patient'>('all');
+
     useEffect(() => {
         fetchUsers();
     }, []);
+
+    const filteredUsers = users.filter(user => {
+        if (filter === 'all') return true;
+        if (filter === 'doctor') return user.role === 'doctor';
+        if (filter === 'online') return user.is_online;
+        if (filter === 'patient') return user.role !== 'doctor' && !user.is_staff;
+        return true;
+    });
 
     const fetchUsers = async () => {
         try {
@@ -48,21 +58,57 @@ export default function UsersPage() {
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900">User Management</h1>
                     <p className="text-slate-500 mt-1">View and manage all registered users on the platform.</p>
                 </div>
-                <div className="bg-white px-4 py-2 rounded-lg border shadow-sm self-start sm:self-auto">
-                    <span className="text-sm font-medium text-slate-500">Total Users:</span>
-                    <span className="ml-2 text-xl font-bold text-emerald-600">{users.length}</span>
+                <div className="flex items-center gap-3">
+                    <div className="bg-white px-4 py-2 rounded-lg border shadow-sm flex flex-col items-center">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Total</span>
+                        <span className="text-xl font-bold text-slate-700">{users.length}</span>
+                    </div>
+                    <div className="bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 shadow-sm flex flex-col items-center">
+                        <span className="text-[10px] uppercase font-bold text-emerald-400">Online</span>
+                        <span className="text-xl font-bold text-emerald-600">{users.filter(u => u.is_online).length}</span>
+                    </div>
                 </div>
+            </div>
+
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg w-fit">
+                <Button 
+                    variant={filter === 'all' ? 'default' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setFilter('all')}
+                    className={filter === 'all' ? 'bg-white text-slate-900 shadow-sm hover:bg-white' : 'text-slate-500'}
+                >All Users</Button>
+                <Button 
+                    variant={filter === 'doctor' ? 'default' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setFilter('doctor')}
+                    className={filter === 'doctor' ? 'bg-white text-slate-900 shadow-sm hover:bg-white' : 'text-slate-500'}
+                >Doctors</Button>
+                <Button 
+                    variant={filter === 'online' ? 'default' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setFilter('online')}
+                    className={filter === 'online' ? 'bg-white text-slate-900 shadow-sm hover:bg-white' : 'text-slate-500'}
+                >Online Now</Button>
+                <Button 
+                    variant={filter === 'patient' ? 'default' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setFilter('patient')}
+                    className={filter === 'patient' ? 'bg-white text-slate-900 shadow-sm hover:bg-white' : 'text-slate-500'}
+                >Patients</Button>
             </div>
 
             <Card className="border-slate-200 shadow-sm">
                 <CardHeader>
-                    <CardTitle>Registered Users</CardTitle>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                        <span>{filter === 'all' ? 'Registered Users' : filter.charAt(0).toUpperCase() + filter.slice(1) + (filter === 'online' ? ' Users' : 's')}</span>
+                        <Badge variant="outline" className="ml-2 font-normal text-slate-500">{filteredUsers.length} results</Badge>
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
                         <div className="py-12 text-center text-slate-500 animate-pulse">Loading users...</div>
-                    ) : users.length === 0 ? (
-                        <div className="py-12 text-center text-slate-500">No users found.</div>
+                    ) : filteredUsers.length === 0 ? (
+                        <div className="py-12 text-center text-slate-500">No {filter !== 'all' ? filter : ''} users found.</div>
                     ) : (
                         <Table>
                             <TableHeader>
@@ -75,7 +121,7 @@ export default function UsersPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {users.map((user) => (
+                                {filteredUsers.map((user) => (
                                     <TableRow key={user.id} className={!user.is_active ? "opacity-50 bg-red-50/30" : ""}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">

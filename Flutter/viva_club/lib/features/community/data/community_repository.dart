@@ -6,12 +6,16 @@ class CommunityRepository {
 
   Future<List<dynamic>> getRooms({
     String? search,
+    String? category,
     String sort = 'recent',
   }) async {
     try {
       final Map<String, dynamic> params = {'sort': sort};
       if (search != null && search.isNotEmpty) {
         params['search'] = search;
+      }
+      if (category != null && category.isNotEmpty && category != 'general' && category != 'All') {
+        params['category'] = category;
       }
       final response = await _dioClient.dio.get(
         ApiConstants.rooms,
@@ -72,6 +76,17 @@ class CommunityRepository {
     }
   }
 
+  Future<void> demoteSpeaker(String roomId, String identity) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.demoteSpeaker(roomId),
+        data: {'identity': identity},
+      );
+    } catch (e) {
+      throw 'Failed to demote speaker: $e';
+    }
+  }
+
   Future<void> muteParticipant(
     String roomId,
     String identity,
@@ -96,6 +111,32 @@ class CommunityRepository {
       );
     } catch (e) {
       throw 'Failed to kick participant: $e';
+    }
+  }
+
+  Future<void> promoteModerator(String roomId, String identity) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.promoteModerator(roomId),
+        data: {'identity': identity},
+      );
+    } catch (e) {
+      if (e.runtimeType.toString() == 'DioException') {
+        final res = (e as dynamic).response;
+        throw res?.data['error'] ?? 'Failed to promote moderator';
+      }
+      throw 'Failed to promote moderator: $e';
+    }
+  }
+
+  Future<void> demoteModerator(String roomId, String identity) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.demoteModerator(roomId),
+        data: {'identity': identity},
+      );
+    } catch (e) {
+      throw 'Failed to demote moderator: $e';
     }
   }
 

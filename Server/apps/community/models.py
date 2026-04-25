@@ -49,9 +49,13 @@ class Room(models.Model):
     
     # We can track participants using LiveKit webhooks, but keeping a count is useful for listing
     listeners_count = models.IntegerField(default=0)
-    last_active_at = models.DateTimeField(auto_now_add=True)
+    last_active_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # New fields for permissions and moderation
+    banned_users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='banned_from_rooms', blank=True)
+    moderators = models.ManyToManyField(GhostProfile, related_name='moderated_rooms', blank=True)
 
     def __str__(self):
         return f"{self.title} ({self.host.display_name})"
