@@ -135,12 +135,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
     service.setMicrophoneEnabled(service.isMuted);
   }
 
-  void _shareRoomLink() {
+  void _shareRoomLink(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
     final deepLink = 'https://vivaclub.app/rooms/${widget.roomId}';
     try {
       Share.share(
         '💬 Join me in "${widget.title}" on VivaClub — a safe space to talk! $deepLink',
         subject: 'Join my VivaClub room',
+        sharePositionOrigin: box != null ? (box.localToGlobal(Offset.zero) & box.size) : null,
       );
     } catch (e) {
       debugPrint('Share failed: $e');
@@ -308,7 +310,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
             ),
           ),
           GestureDetector(
-            onTap: _shareRoomLink,
+            onTap: () => _shareRoomLink(context),
             child: Container(
               padding: EdgeInsets.all(8.w),
               decoration: const BoxDecoration(

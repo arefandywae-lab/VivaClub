@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 
 class VideoCallScreen extends StatefulWidget {
@@ -34,9 +35,22 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   Future<void> _connect() async {
     try {
       debugPrint('Connecting to LiveKit...');
-      debugPrint('URL: ${widget.url}');
-      debugPrint('Room: ${widget.roomName}');
-      debugPrint('Token prefix: ${widget.token.substring(0, 10)}...');
+      
+      // 1. Request Permissions
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.camera,
+        Permission.microphone,
+      ].request();
+      
+      if (statuses[Permission.microphone] != PermissionStatus.granted) {
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission is required for the call.')),
+          );
+          context.pop();
+          return;
+        }
+      }
 
       final room = Room();
       _room = room;
@@ -84,12 +98,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       
       final local = room.localParticipant;
       if (local != null) {
-        try {
-          await local.setCameraEnabled(true, cameraCaptureOptions: CameraCaptureOptions(
-            params: VideoParametersPresets.h480_43,
-          ));
-        } catch (e) {
-          debugPrint('Failed to enable camera: $e');
+        // Attempt to enable camera (if granted and available)
+        if (statuses[Permission.camera] == PermissionStatus.granted) {
+          try {
+            await local.setCameraEnabled(true, cameraCaptureOptions: CameraCaptureOptions(
+              params: VideoParametersPresets.h480_43,
+            ));
+          } catch (e) {
+            debugPrint('Failed to enable camera (possibly on simulator): $e');
+            // Don't fail the whole call if camera fails
+          }
         }
         
         try {
