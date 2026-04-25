@@ -181,7 +181,7 @@ class RoomViewSet(viewsets.ModelViewSet):
             title = f"{original_title}#{counter}"
             counter += 1
             
-        room = serializer.save(host=host_profile, title=title)
+        room = serializer.save(host=host_profile, title=title, participant_count=1)
         
         # 1. Create room in LiveKit explicitly with 60s timeout
         from livekit import api
@@ -1090,8 +1090,8 @@ class LiveKitWebhookView(APIView):
                     
                 elif event_type == 'participant_joined':
                     Room.objects.filter(id=room_name, is_active=True).update(
+                        participant_count=event.room.num_participants,
                         listeners_count=F('listeners_count') + 1,
-                        participant_count=F('participant_count') + 1,
                         last_active_at=timezone.now()
                     )
                     # Host Reclamation logic
@@ -1120,8 +1120,8 @@ class LiveKitWebhookView(APIView):
                     
                 elif event_type == 'participant_left':
                     Room.objects.filter(id=room_name, is_active=True).update(
+                        participant_count=event.room.num_participants,
                         listeners_count=F('listeners_count') - 1,
-                        participant_count=F('participant_count') - 1,
                         last_active_at=timezone.now()
                     )
                     # Fix negative counts

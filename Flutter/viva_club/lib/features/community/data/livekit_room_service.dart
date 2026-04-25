@@ -51,7 +51,7 @@ class LiveKitRoomService extends ChangeNotifier {
 
     _isConnecting = true;
     _currentTitle = title;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       _room = Room();
@@ -82,25 +82,25 @@ class LiveKitRoomService extends ChangeNotifier {
             _isHost = false;
             _participants = [];
             _room = null;
-            notifyListeners();
+            _safeNotifyListeners();
           }
         }
       });
 
       _updateParticipants();
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
       _isConnecting = false;
       _activeRoomId = null;
       _room = null;
-      notifyListeners();
+      _safeNotifyListeners();
       rethrow;
     }
   }
 
   void _onRoomEvent([dynamic _]) {
     _updateParticipants();
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _updateParticipants() {
@@ -116,7 +116,7 @@ class LiveKitRoomService extends ChangeNotifier {
       final p = _room?.localParticipant;
       if (p == null) return;
       await p.setMicrophoneEnabled(enabled);
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
       debugPrint('Error toggling microphone: $e');
     }
@@ -134,7 +134,7 @@ class LiveKitRoomService extends ChangeNotifier {
     final roomToDispose = _room;
     _room = null;
 
-    notifyListeners();
+    _safeNotifyListeners();
 
     // Background cleanup
     communityRepository.leaveRoom(roomId);
@@ -153,7 +153,7 @@ class LiveKitRoomService extends ChangeNotifier {
       final p = _room?.localParticipant;
       if (p == null) return;
       p.setMetadata('{"handRaised": $isRaised}');
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
       debugPrint('Error toggling hand raise: $e');
     }
@@ -213,8 +213,17 @@ class LiveKitRoomService extends ChangeNotifier {
     }
   }
 
+  bool _disposed = false;
+
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
+    _disposed = true;
     leave();
     super.dispose();
   }
