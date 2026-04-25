@@ -933,115 +933,125 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
               // Action buttons
               if (!isLocal)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Follow button
-                    if (ghostId != null)
-                      BlocProvider(
-                        create: (_) =>
-                            FollowingBloc(FollowingRepository(DioClient())),
-                        child: FollowButton(
-                          ghostId: ghostId,
-                          ghostName: EmojiUtils.getNameWithoutTag(p.name),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.w),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8.w,
+                    runSpacing: 8.h,
+                    children: [
+                      // Follow button
+                      if (ghostId != null)
+                        BlocProvider(
+                          create: (_) =>
+                              FollowingBloc(FollowingRepository(DioClient())),
+                          child: FollowButton(
+                            ghostId: ghostId,
+                            ghostName: EmojiUtils.getNameWithoutTag(p.name),
+                          ),
                         ),
-                      ),
-                    if (ghostId != null) SizedBox(width: 12.w),
-                    // Block button
-                    _buildCardButton(
-                      icon: Icons.block_rounded,
-                      label: 'Block',
-                      color: Colors.redAccent,
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _showBlockConfirmation(context, p);
-                      },
-                    ),
-                    if (ghostId != null) SizedBox(width: 12.w),
-                    // Report button
-                    _buildCardButton(
-                      icon: Icons.flag_rounded,
-                      label: 'Report',
-                      color: Colors.orange,
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _showReportDialog(context, p);
-                      },
-                    ),
-                    // Kick — host only
-                    if (widget.isHost) ...[
-                      SizedBox(width: 12.w),
-                      // Mute/Unmute button
-                      Builder(builder: (context) {
-                        final isSpeaker = _isSpeaker(p);
-                        if (!isSpeaker) return const SizedBox();
-                        
-                        final muted = p.audioTrackPublications.isEmpty ||
-                                      p.audioTrackPublications.every((pub) => pub.muted);
-                                      
-                        return _buildCardButton(
-                          icon: muted ? Icons.mic_rounded : Icons.mic_off_rounded,
-                          label: muted ? 'Unmute' : 'Mute',
-                          color: muted ? const Color(0xFF059669) : const Color(0xFFEA580C),
-                          onTap: () {
-                            String? trackSid;
-                            if (p.audioTrackPublications.isNotEmpty) {
-                              trackSid = p.audioTrackPublications.first.sid;
-                            }
-
-                            if (trackSid != null) {
-                              service.muteParticipant(p.identity, trackSid, !muted);
-                              Navigator.pop(ctx);
-                            } else {
-                               ScaffoldMessenger.of(context).showSnackBar(
-                                 const SnackBar(content: Text('Audio track not found for this participant'))
-                               );
-                            }
-                          },
-                        );
-                      }),
-                      SizedBox(width: 12.w),
+                      
+                      // Block button
                       _buildCardButton(
-                        icon: Icons.remove_circle_rounded,
-                        label: 'Kick',
-                        color: const Color(0xFFEF4444),
+                        icon: Icons.block_rounded,
+                        label: 'Block',
+                        color: Colors.redAccent,
                         onTap: () {
                           Navigator.pop(ctx);
-                          _showKickConfirmation(context, p);
+                          _showBlockConfirmation(context, p);
                         },
                       ),
-                      // Promote/Demote Moderator (Manual)
-                      if (_isSpeaker(p) && !_isParticipantOwner(p)) ...[
-                         SizedBox(width: 12.w),
-                         Builder(builder: (context) {
-                           final isMod = p.metadata?.contains('"is_moderator": true') == true ||
-                                          p.metadata?.contains('"is_moderator":true') == true;
-                           
-                           return _buildCardButton(
-                             icon: isMod ? Icons.verified_user_rounded : Icons.add_moderator_rounded,
-                             label: isMod ? 'Demote Mod' : 'Promote Mod',
-                             color: isMod ? Colors.blue : Colors.blueGrey,
-                             onTap: () async {
-                               try {
-                                 if (isMod) {
-                                   await service.demoteModerator(p.identity);
-                                 } else {
-                                   await service.promoteModerator(p.identity);
+                      
+                      // Report button
+                      _buildCardButton(
+                        icon: Icons.flag_rounded,
+                        label: 'Report',
+                        color: Colors.orange,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _showReportDialog(context, p);
+                        },
+                      ),
+                      
+                      // Kick & Moderator — host only
+                      if (widget.isHost) ...[
+                        // Mute/Unmute button
+                        Builder(builder: (context) {
+                          final isSpeaker = _isSpeaker(p);
+                          if (!isSpeaker) return const SizedBox.shrink();
+                          
+                          final muted = p.audioTrackPublications.isEmpty ||
+                                        p.audioTrackPublications.every((pub) => pub.muted);
+                                        
+                          return _buildCardButton(
+                            icon: muted ? Icons.mic_rounded : Icons.mic_off_rounded,
+                            label: muted ? 'Unmute' : 'Mute',
+                            color: muted ? const Color(0xFF059669) : const Color(0xFFEA580C),
+                            onTap: () {
+                              String? trackSid;
+                              if (p.audioTrackPublications.isNotEmpty) {
+                                trackSid = p.audioTrackPublications.first.sid;
+                              }
+
+                              if (trackSid != null) {
+                                service.muteParticipant(p.identity, trackSid, !muted);
+                                Navigator.pop(ctx);
+                              } else {
+                                 ScaffoldMessenger.of(context).showSnackBar(
+                                   const SnackBar(content: Text('Audio track not found'))
+                                 );
+                              }
+                            },
+                          );
+                        }),
+                        
+                        _buildCardButton(
+                          icon: Icons.remove_circle_rounded,
+                          label: 'Kick',
+                          color: const Color(0xFFEF4444),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _showKickConfirmation(context, p);
+                          },
+                        ),
+                        
+                        // Promote/Demote Moderator (Manual)
+                        if (_isSpeaker(p) && !_isParticipantOwner(p)) ...[
+                           Builder(builder: (context) {
+                             final isMod = p.metadata?.contains('"is_moderator": true') == true ||
+                                            p.metadata?.contains('"is_moderator":true') == true;
+                             
+                             return _buildCardButton(
+                               icon: isMod ? Icons.verified_user_rounded : Icons.add_moderator_rounded,
+                               label: isMod ? 'Demote Mod' : 'Promote Mod',
+                               color: isMod ? Colors.blue : Colors.blueGrey,
+                               onTap: () async {
+                                 try {
+                                   if (isMod) {
+                                     await service.demoteModerator(p.identity);
+                                   } else {
+                                     await service.promoteModerator(p.identity);
+                                   }
+                                   if (context.mounted) Navigator.pop(context);
+                                 } catch (e) {
+                                   if (context.mounted) {
+                                     ScaffoldMessenger.of(context).showSnackBar(
+                                       SnackBar(content: Text(e.toString())),
+                                     );
+                                   }
                                  }
-                                 if (context.mounted) Navigator.pop(context);
-                               } catch (e) {
-                                 if (context.mounted) {
-                                   ScaffoldMessenger.of(context).showSnackBar(
-                                     SnackBar(content: Text(e.toString())),
-                                   );
-                                 }
-                               }
-                             },
-                           );
-                         }),
+                               },
+                             );
+                           }),
+                        ],
                       ],
                     ],
-                  ],
+                  ),
+                ),
+              if (isLocal)
+                Text(
+                  'This is your profile within the room',
+                  style: TextStyle(fontSize: 12.sp, color: AppTheme.textGrey),
                 ),
               SizedBox(height: 8.h),
             ],

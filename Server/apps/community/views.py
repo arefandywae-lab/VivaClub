@@ -124,7 +124,7 @@ class RoomViewSet(viewsets.ModelViewSet):
         
         Room.objects.filter(
             is_active=True,
-            listeners_count=0,
+            participant_count=0,
             last_active_at__lte=five_minutes_ago
         ).update(is_active=False)
         

@@ -717,6 +717,7 @@ class _RoomListScreenState extends State<RoomListScreen>
             hostName: hostName,
             hostRole: hostRole,
             listeners: listeners,
+            participantCount: room['participant_count'] ?? 0,
             lastActiveAt: lastActiveAt,
             onTap: () => _joinRoom(context, roomId),
           );
@@ -738,6 +739,7 @@ class _RoomCard extends StatefulWidget {
   final String hostName;
   final String hostRole;
   final int listeners;
+  final int participantCount;
   final DateTime? lastActiveAt;
   final VoidCallback onTap;
 
@@ -747,6 +749,7 @@ class _RoomCard extends StatefulWidget {
     required this.hostName,
     required this.hostRole,
     required this.listeners,
+    required this.participantCount,
     this.lastActiveAt,
     required this.onTap,
   });
@@ -814,7 +817,7 @@ class _RoomCardState extends State<_RoomCard> {
                     ),
                   ),
                 ),
-                if (widget.listeners == 0 && widget.lastActiveAt != null)
+                if (widget.participantCount == 0 && widget.lastActiveAt != null)
                   StreamBuilder<int>(
                     stream: _timerStream,
                     builder: (context, _) {

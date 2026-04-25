@@ -31,10 +31,10 @@ class RoomSerializer(serializers.ModelSerializer):
             'id', 'title', 'host', 'host_details', 'category',
             'description', 'tags', 'scheduled_at', 'is_scheduled',
             'trending_score', 'peak_listeners',
-            'listeners_count', 'last_active_at', 'is_active', 'created_at'
+            'listeners_count', 'participant_count', 'last_active_at', 'is_active', 'created_at'
         ]
         read_only_fields = [
-            'id', 'host', 'listeners_count', 'trending_score',
+            'id', 'host', 'listeners_count', 'participant_count', 'trending_score',
             'peak_listeners', 'last_active_at', 'is_active', 'created_at'
         ]
 
