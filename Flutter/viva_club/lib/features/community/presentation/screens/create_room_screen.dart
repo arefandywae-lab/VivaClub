@@ -248,7 +248,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
               child: BlocListener<RoomBloc, RoomState>(
                 listener: (context, state) {
                   if (state is RoomJoined && _isSubmitting) {
-                    _isSubmitting = false; // Mark as handled
+                    setState(() {
+                      _isSubmitting = false; // Mark as handled
+                    });
                     context.pushReplacement(
                       '/live_room',
                       extra: {

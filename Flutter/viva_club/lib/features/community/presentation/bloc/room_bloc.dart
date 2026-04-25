@@ -64,6 +64,9 @@ class RoomJoined extends RoomState {
     required this.title,
     this.isHost = false,
   });
+
+  @override
+  List<Object> get props => [token, url, roomId, title, isHost];
 }
 
 class RoomFailure extends RoomState {

@@ -104,9 +104,10 @@ class _RoomListScreenState extends State<RoomListScreen>
                       context,
                     ).showSnackBar(SnackBar(content: Text(state.message)));
                   } else if (state is RoomJoined && _isJoining) {
-                    _isJoining = false; // Mark as handled immediately to prevent double-navigation
-                    debugPrint('--- Navigating to Room: ${state.title} ---');
-                    debugPrint('URL: ${state.url}');
+                    setState(() {
+                      _isJoining = false;
+                    });
+                    debugPrint('--- NAVIGATING TO ROOM (ONCE): ${state.title} ---');
                     context.push(
                       '/live_room',
                       extra: {
@@ -123,7 +124,7 @@ class _RoomListScreenState extends State<RoomListScreen>
                         });
                       }
                     });
-                    // Reset state to avoid duplicate triggers
+                    // Clear the state by reloading list
                     context.read<RoomBloc>().add(const RoomLoad());
                   }
                 },
@@ -753,7 +754,9 @@ class _RoomListScreenState extends State<RoomListScreen>
 
   void _joinRoom(BuildContext context, String roomId) {
     if (_isJoining) return; // Prevent double-tap
-    _isJoining = true;
+    setState(() {
+      _isJoining = true;
+    });
     context.read<RoomBloc>().add(RoomJoin(roomId));
   }
 }
@@ -844,34 +847,49 @@ class _RoomCardState extends State<_RoomCard> {
                     ),
                   ),
                 ),
-                if (widget.participantCount == 0 && 
-                    widget.lastActiveAt != null && 
-                    DateTime.now().difference(widget.createdAt).inSeconds > 45)
+                if (widget.participantCount <= 1 && 
+                    DateTime.now().difference(widget.createdAt).inSeconds > 10)
                   StreamBuilder<int>(
                     stream: _timerStream,
                     builder: (context, _) {
                       final now = DateTime.now();
-                      final diff = now.difference(widget.lastActiveAt!);
+                      final referenceTime = widget.lastActiveAt ?? widget.createdAt;
+                      final diff = now.difference(referenceTime);
                       final remaining = 60 - diff.inSeconds;
 
                       if (remaining <= 0) return const SizedBox();
+                      if (remaining > 60) return const SizedBox();
 
                       return Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 8.w,
-                          vertical: 4.h,
+                          horizontal: 10.w,
+                          vertical: 6.h,
                         ),
                         decoration: BoxDecoration(
-                          color: AppTheme.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8.r),
+                          color: const Color(0xFFEF4444), // Solid Red for urgency
+                          borderRadius: BorderRadius.circular(12.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          'Closing in ${remaining}s',
-                          style: TextStyle(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.error,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.timer_outlined, size: 12.sp, color: Colors.white),
+                            SizedBox(width: 4.w),
+                            Text(
+                              '${remaining}s',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     },
