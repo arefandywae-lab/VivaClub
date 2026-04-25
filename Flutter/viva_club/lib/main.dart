@@ -78,52 +78,51 @@ class VivaClubApp extends StatelessWidget {
     // Initialize Router with the AuthBloc
     final appRouter = AppRouter(authBloc);
 
-    return ScreenUtilInit(
-      designSize: const Size(375, 812),
-      minTextAdapt: true,
-      splitScreenMode: true,
-      builder: (context, child) {
-        return MultiRepositoryProvider(
-          providers: [
-            RepositoryProvider.value(value: authRepository),
-            RepositoryProvider.value(value: clinicalRepository),
-            RepositoryProvider.value(value: chatRepository),
-            RepositoryProvider(create: (context) => CommunityRepository()),
-            RepositoryProvider(create: (context) => ProfileRepository()),
-          ],
-          child: MultiProvider(
-            providers: [
-              ChangeNotifierProvider(
-                create: (context) => LiveKitRoomService(
-                  communityRepository: context.read<CommunityRepository>(),
-                ),
-              ),
-              // Use BlocProvider.value to provide the existing instance
-              BlocProvider.value(value: authBloc),
-              BlocProvider.value(value: clinicalBloc),
-              BlocProvider.value(value: chatBloc),
-              BlocProvider(
-                create: (context) => RoomBloc(
-                  communityRepository: context.read<CommunityRepository>(),
-                )..add(RoomLoad()),
-              ),
-              BlocProvider(
-                create: (context) => ProfileBloc(
-                  profileRepository: context.read<ProfileRepository>(),
-                )..add(ProfileLoad()),
-              ),
-            ],
-            child: MaterialApp.router(
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider.value(value: authRepository),
+        RepositoryProvider.value(value: clinicalRepository),
+        RepositoryProvider.value(value: chatRepository),
+        RepositoryProvider(create: (context) => CommunityRepository()),
+        RepositoryProvider(create: (context) => ProfileRepository()),
+      ],
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (context) => LiveKitRoomService(
+              communityRepository: context.read<CommunityRepository>(),
+            ),
+          ),
+          BlocProvider.value(value: authBloc),
+          BlocProvider.value(value: clinicalBloc),
+          BlocProvider.value(value: chatBloc),
+          BlocProvider(
+            create: (context) => RoomBloc(
+              communityRepository: context.read<CommunityRepository>(),
+            )..add(const RoomLoad()),
+          ),
+          BlocProvider(
+            create: (context) => ProfileBloc(
+              profileRepository: context.read<ProfileRepository>(),
+            )..add(ProfileLoad()),
+          ),
+        ],
+        child: ScreenUtilInit(
+          designSize: const Size(375, 812),
+          minTextAdapt: true,
+          splitScreenMode: true,
+          builder: (context, child) {
+            return MaterialApp.router(
               title: 'Viva Club',
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
-              themeMode: ThemeMode.system, // Set to system to allow toggle/default behavior
+              themeMode: ThemeMode.system,
               routerConfig: appRouter.router,
               debugShowCheckedModeBanner: false,
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }

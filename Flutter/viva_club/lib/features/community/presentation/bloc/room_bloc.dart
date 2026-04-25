@@ -126,8 +126,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
           isHost: data['is_host'] ?? true,
         ),
       );
-      await Future.delayed(const Duration(milliseconds: 500));
-      add(RoomLoad());
+      add(const RoomLoad());
     } catch (e) {
       emit(RoomFailure(e.toString()));
     }
@@ -155,9 +154,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
           isHost: data['is_host'] ?? false,
         ),
       );
-      // Delay reload so the BlocConsumer listener has time to navigate
-      await Future.delayed(const Duration(milliseconds: 500));
-      add(RoomLoad());
+      add(const RoomLoad());
     } catch (e) {
       emit(RoomFailure(e.toString()));
       add(RoomLoad()); // Restore list state

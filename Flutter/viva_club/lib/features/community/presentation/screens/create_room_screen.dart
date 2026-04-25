@@ -247,8 +247,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
               ),
               child: BlocListener<RoomBloc, RoomState>(
                 listener: (context, state) {
-                  if (state is RoomJoined) {
-                    if (!mounted) return;
+                  if (state is RoomJoined && _isSubmitting) {
+                    _isSubmitting = false; // Mark as handled
                     context.pushReplacement(
                       '/live_room',
                       extra: {
@@ -259,6 +259,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                         'is_host': state.isHost,
                       },
                     );
+                    // Reset state to avoid duplicate triggers
+                    context.read<RoomBloc>().add(const RoomLoad());
                   } else if (state is RoomFailure) {
                     if (mounted) {
                       setState(() => _isSubmitting = false);

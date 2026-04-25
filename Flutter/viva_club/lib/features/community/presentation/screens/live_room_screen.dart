@@ -177,11 +177,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
   @override
   void dispose() {
-    // Ensure we disconnect when the screen is destroyed, 
-    // using the captured service reference since context is unsafe in dispose.
-    if (!_isLeaving) {
-      _roomService.leave();
-    }
+    // We no longer leave automatically on dispose.
+    // This allows background audio to continue while browsing.
     super.dispose();
   }
 

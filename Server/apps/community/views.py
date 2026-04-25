@@ -193,7 +193,7 @@ class RoomViewSet(viewsets.ModelViewSet):
             try:
                 await lkapi.room.create_room(api.CreateRoomRequest(
                     name=str(room.id),
-                    empty_timeout=60, # 60 seconds
+                    empty_timeout=300, # 5 minutes
                     max_participants=50
                 ))
             except Exception as lk_err:
