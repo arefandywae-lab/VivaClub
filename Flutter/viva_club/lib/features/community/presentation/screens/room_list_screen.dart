@@ -116,7 +116,11 @@ class _RoomListScreenState extends State<RoomListScreen>
                         'title': state.title,
                         'is_host': state.isHost,
                       },
-                    );
+                    ).then((_) {
+                      if (mounted) {
+                        _isJoining = false;
+                      }
+                    });
                   }
                 },
                 builder: (context, state) {

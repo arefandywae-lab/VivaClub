@@ -121,7 +121,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
 
   Future<void> _connect() async {
     final service = context.read<LiveKitRoomService>();
-    debugPrint('Connecting to LiveKit: ${widget.url}');
     try {
       await service.connect(
         url: widget.url,

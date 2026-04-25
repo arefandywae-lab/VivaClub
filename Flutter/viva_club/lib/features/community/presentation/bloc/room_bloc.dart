@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../data/community_repository.dart';
@@ -105,7 +106,17 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       // Auto-join the room after creating it
       final roomId = room['id'];
       final data = await _communityRepository.joinRoom(roomId);
-      debugPrint('RoomCreated & Joined: url=${data['url']}');
+      final url = data['url'];
+      final token = data['token'];
+
+      if (url == null || url.toString().isEmpty) {
+        throw 'LiveKit URL is missing from server response';
+      }
+      if (token == null || token.toString().isEmpty) {
+        throw 'LiveKit Token is missing from server response';
+      }
+
+      debugPrint('RoomCreated & Joined: url=$url');
       emit(
         RoomJoined(
           token: data['token'],
@@ -125,13 +136,22 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   Future<void> _onJoin(RoomJoin event, Emitter<RoomState> emit) async {
     try {
       final data = await _communityRepository.joinRoom(event.roomId);
-      debugPrint('RoomJoined: url=${data['url']}');
+      final url = data['url'];
+      final token = data['token'];
+      
+      if (url == null || url.toString().isEmpty) {
+        throw 'LiveKit URL is missing from server response';
+      }
+      if (token == null || token.toString().isEmpty) {
+        throw 'LiveKit Token is missing from server response';
+      }
+
       emit(
         RoomJoined(
-          token: data['token'],
-          url: data['url'],
+          token: token,
+          url: url,
           roomId: data['room_id'],
-          title: data['title'] ?? 'Room',
+          title: data['title'] ?? 'Live Room',
           isHost: data['is_host'] ?? false,
         ),
       );

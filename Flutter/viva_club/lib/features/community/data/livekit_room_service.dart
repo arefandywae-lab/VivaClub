@@ -49,6 +49,7 @@ class LiveKitRoomService extends ChangeNotifier {
       await leave();
     }
 
+    debugPrint('LiveKitRoomService.connect: url=$url, token length=${token.length}');
     _isConnecting = true;
     _currentTitle = title;
     _safeNotifyListeners();

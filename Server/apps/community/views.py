@@ -236,10 +236,7 @@ class RoomViewSet(viewsets.ModelViewSet):
         
         api_key = os.environ.get('LIVEKIT_API_KEY')
         api_secret = os.environ.get('LIVEKIT_API_SECRET')
-        import logging
-        logger = logging.getLogger(__name__)
         ws_url = os.environ.get('LIVEKIT_API_URL')
-        logger.info(f"DEBUG: LIVEKIT_API_URL from env in join: {ws_url}")
 
         if not api_key or not api_secret:
              return Response({"error": "LiveKit credentials not configured"}, status=500)
