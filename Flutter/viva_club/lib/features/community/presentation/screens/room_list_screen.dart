@@ -98,11 +98,25 @@ class _RoomListScreenState extends State<RoomListScreen>
             Expanded(
               child: BlocConsumer<RoomBloc, RoomState>(
                 listener: (context, state) {
-                  if (state is RoomFailure) {
+                   if (state is RoomFailure) {
                     _isJoining = false;
                     ScaffoldMessenger.of(
                       context,
                     ).showSnackBar(SnackBar(content: Text(state.message)));
+                  } else if (state is RoomJoined) {
+                    _isJoining = false;
+                    debugPrint('--- Navigating to Room: ${state.title} ---');
+                    debugPrint('URL: ${state.url}');
+                    context.pushReplacement(
+                      '/live_room',
+                      extra: {
+                        'token': state.token,
+                        'url': state.url,
+                        'room_id': state.roomId,
+                        'title': state.title,
+                        'is_host': state.isHost,
+                      },
+                    );
                   }
                 },
                 builder: (context, state) {

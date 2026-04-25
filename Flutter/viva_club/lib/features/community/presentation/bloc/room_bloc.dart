@@ -105,6 +105,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       // Auto-join the room after creating it
       final roomId = room['id'];
       final data = await _communityRepository.joinRoom(roomId);
+      debugPrint('RoomCreated & Joined: url=${data['url']}');
       emit(
         RoomJoined(
           token: data['token'],
@@ -124,6 +125,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   Future<void> _onJoin(RoomJoin event, Emitter<RoomState> emit) async {
     try {
       final data = await _communityRepository.joinRoom(event.roomId);
+      debugPrint('RoomJoined: url=${data['url']}');
       emit(
         RoomJoined(
           token: data['token'],
