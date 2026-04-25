@@ -122,6 +122,7 @@ class RoomViewSet(viewsets.ModelViewSet):
         # Cleanup rooms:
         # 1. Truly empty rooms (count=0) older than 5 minutes
         # 2. Stuck rooms (count=1) older than 15 minutes (likely host disconnected)
+        five_minutes_ago = timezone.now() - timedelta(minutes=5)
         fifteen_minutes_ago = timezone.now() - timedelta(minutes=15)
         
         Room.objects.filter(
