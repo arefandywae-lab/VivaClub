@@ -26,7 +26,7 @@ class ChatRepository {
 
   Future<List<dynamic>> getChatHistory(String roomId) async {
     try {
-      final response = await _dio.get('/chat/messages/', queryParameters: {'room_id': roomId});
+      final response = await _dio.get('/api/chat/messages/', queryParameters: {'room_id': roomId});
       return response.data;
     } catch (e) {
       throw 'Failed to load chat history';
