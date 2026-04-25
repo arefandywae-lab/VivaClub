@@ -40,6 +40,15 @@ class LiveRoomScreen extends StatefulWidget {
 
 class _LiveRoomScreenState extends State<LiveRoomScreen> {
   bool _isLeaving = false;
+  late LiveKitRoomService _roomService;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Capture service here to use safely in dispose
+    _roomService = context.read<LiveKitRoomService>();
+  }
+
   bool _isDragging = false;
   final Set<String> _pendingSpeakers = {};
   final Set<String> _pendingListeners = {};
@@ -169,9 +178,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen> {
   @override
   void dispose() {
     // Ensure we disconnect when the screen is destroyed, 
-    // unless we are already in the process of leaving.
+    // using the captured service reference since context is unsafe in dispose.
     if (!_isLeaving) {
-      context.read<LiveKitRoomService>().leave();
+      _roomService.leave();
     }
     super.dispose();
   }

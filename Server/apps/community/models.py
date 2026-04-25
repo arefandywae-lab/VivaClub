@@ -49,7 +49,7 @@ class Room(models.Model):
     
     # We can track participants using LiveKit webhooks, but keeping a count is useful for listing
     listeners_count = models.IntegerField(default=0)
-    participant_count = models.IntegerField(default=1) # Starts with 1 (the host)
+    participant_count = models.IntegerField(default=0) # Starts at 0, updated by webhooks
     last_active_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

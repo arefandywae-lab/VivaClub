@@ -1082,6 +1082,7 @@ class LiveKitWebhookView(APIView):
                 elif event_type == 'participant_joined':
                     Room.objects.filter(id=room_name, is_active=True).update(
                         listeners_count=F('listeners_count') + 1,
+                        participant_count=F('participant_count') + 1,
                         last_active_at=timezone.now()
                     )
                     # Host Reclamation logic
@@ -1111,10 +1112,12 @@ class LiveKitWebhookView(APIView):
                 elif event_type == 'participant_left':
                     Room.objects.filter(id=room_name, is_active=True).update(
                         listeners_count=F('listeners_count') - 1,
+                        participant_count=F('participant_count') - 1,
                         last_active_at=timezone.now()
                     )
                     # Fix negative counts
                     Room.objects.filter(id=room_name, listeners_count__lt=0).update(listeners_count=0)
+                    Room.objects.filter(id=room_name, participant_count__lt=0).update(participant_count=0)
                     
                     # Host Migration logic
                     if room and str(room.host.user.id) == event.participant.identity:
