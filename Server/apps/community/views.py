@@ -119,13 +119,21 @@ class RoomViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         from datetime import timedelta
         from django.db.models import Q
-        # Increase timeout to 5 minutes to prevent aggressive closing of new rooms
-        five_minutes_ago = timezone.now() - timedelta(minutes=5)
+        # Cleanup rooms:
+        # 1. Truly empty rooms (count=0) older than 5 minutes
+        # 2. Stuck rooms (count=1) older than 15 minutes (likely host disconnected)
+        fifteen_minutes_ago = timezone.now() - timedelta(minutes=15)
         
         Room.objects.filter(
             is_active=True,
             participant_count=0,
             last_active_at__lte=five_minutes_ago
+        ).update(is_active=False)
+
+        Room.objects.filter(
+            is_active=True,
+            participant_count=1,
+            last_active_at__lte=fifteen_minutes_ago
         ).update(is_active=False)
         
         qs = Room.objects.filter(is_active=True)
