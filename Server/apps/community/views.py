@@ -119,22 +119,20 @@ class RoomViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         from datetime import timedelta
         from django.db.models import Q
-        # Cleanup rooms:
-        # 1. Truly empty rooms (count=0) older than 65 seconds
-        # 2. Stuck rooms (count=1) older than 5 minutes (likely host disconnected)
-        one_minute_ago = timezone.now() - timedelta(seconds=65)
-        five_minutes_ago = timezone.now() - timedelta(minutes=5)
+        # Showcase Mode: Slow cleanup (1 hour)
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        two_hours_ago = timezone.now() - timedelta(hours=2)
         
         Room.objects.filter(
             is_active=True,
             participant_count=0,
-            last_active_at__lte=one_minute_ago
+            last_active_at__lte=one_hour_ago
         ).update(is_active=False)
 
         Room.objects.filter(
             is_active=True,
             participant_count=1,
-            last_active_at__lte=five_minutes_ago
+            last_active_at__lte=two_hours_ago
         ).update(is_active=False)
         
         qs = Room.objects.filter(is_active=True)
@@ -193,7 +191,7 @@ class RoomViewSet(viewsets.ModelViewSet):
             try:
                 await lkapi.room.create_room(api.CreateRoomRequest(
                     name=str(room.id),
-                    empty_timeout=60, # 1 minute
+                    empty_timeout=3600, # 1 hour for showcase
                     max_participants=50
                 ))
             except Exception as lk_err:

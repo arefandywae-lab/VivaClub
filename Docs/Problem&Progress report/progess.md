@@ -722,6 +722,13 @@
 
 ## 🚀 RECENT MILESTONES (April 2026)
 
+### **Stability & UX Optimization (April 26, 2026) 🎙️⚡**
+- [x] **Background Audio Persistence:** Moved LiveKit service to root level, allowing audio to continue seamlessly while browsing other app features.
+- [x] **Navigation Stack Stability:** Implemented navigation guards and state-clearing logic to fix the "double-push/double-back" issue.
+- [x] **Aggressive Room Cleanup:** Updated backend to clear empty rooms after 65 seconds (instead of 5 mins) to keep the list fresh.
+- [x] **Real-time Countdown UI:** Added a prominent red countdown timer with an icon in the room list for empty/stalling rooms.
+- [x] **BLoC State Hardening:** Added Equatable props and explicit setState calls to ensure reliable UI transitions.
+
 ### **Green App & Sustainability 🌿**
 - [x] **Deep Dark Mode:** OLED-friendly black (#000000) for energy saving.
 - [x] **Dynamic Theme Toggle:** Supports both Light (Default) and Dark modes.
@@ -733,9 +740,11 @@
 - [x] **SMTP Integration:** Configured real-world email sending for Forgot Password.
 - [x] **Database Migrations:** Applied 0004 migration for email verification fields.
 
-### **Bug Fixes 🛠️**
-- [x] **UI Distortion:** Fixed loading spinner distortion on Login button.
-- [x] **Build Errors:** Resolved `const` expression issues in Flutter UI code.
+### **Bug Fixes & Maintenance 🛠️**
+- [x] **Double-Back Glitch:** Resolved race condition in BlocListener causing multiple screen pushes.
+- [x] **Stuck Room Deletion:** Fixed logic where rooms with no participants remained visible for too long.
+- [x] **LiveKit Connection:** Stabilized WebSocket connection by ensuring correct URL formatting (wss://).
+- [x] **UI Loading Distortion:** Corrected spinner scaling issues on primary action buttons.
 
 ---
 
