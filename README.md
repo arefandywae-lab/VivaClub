@@ -85,8 +85,8 @@ graph TD
 ---
 
 ## 👥 Team
-- **Arefandy Waeouseng** - Backend, Infrastructure & Integration
-- **Phuritat Lertkitpaisarn** - Mobile UI/UX & Frontend Logic
+
+- **Arefandy Waeouseng** - Backend, Infrastructure & Integration ,Mobile UI/UX & Frontend Logic 
 
 ---
 
