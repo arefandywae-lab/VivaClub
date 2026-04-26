@@ -89,6 +89,3 @@ graph TD
 - **Arefandy Waeouseng** - Backend, Infrastructure & Integration ,Mobile UI/UX & Frontend Logic 
 
 ---
-
-## 📝 License
-This project is part of a Senior Project at King Mongkut's Institute of Technology Ladkrabang (KMITL).
