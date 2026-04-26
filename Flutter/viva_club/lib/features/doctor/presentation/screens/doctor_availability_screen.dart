@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../../../../features/clinical/data/clinical_repository.dart';
 
 class DoctorAvailabilityScreen extends StatefulWidget {
@@ -15,10 +16,13 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> {
   final ClinicalRepository _repository = ClinicalRepository();
   List<dynamic> _slots = [];
   bool _isLoading = true;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
 
   @override
   void initState() {
     super.initState();
+    _selectedDay = _focusedDay;
     _fetchSlots();
   }
 
@@ -39,33 +43,34 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> {
     }
   }
 
+  List<dynamic> _getSlotsForDay(DateTime day) {
+    return _slots.where((slot) {
+      final slotDate = DateTime.parse(slot['start_time']);
+      return isSameDay(slotDate, day);
+    }).toList();
+  }
+
   Future<void> _addSlot() async {
-    final DateTime? pickedDate = await showDatePicker(
+    final DateTime? pickedDate = _selectedDay;
+    if (pickedDate == null) return;
+
+    final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
+      initialTime: TimeOfDay.now(),
     );
 
-    if (pickedDate != null) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.now(),
-      );
+    if (pickedTime != null) {
+      final start = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+      final end = start.add(const Duration(minutes: 50)); // Default 50 mins
 
-      if (pickedTime != null) {
-        final start = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
-        final end = start.add(const Duration(minutes: 50)); // Default 50 mins
-
-        try {
-          setState(() => _isLoading = true);
-          await _repository.createTimeSlot(startTime: start, endTime: end);
-          _fetchSlots();
-        } catch (e) {
-          if (mounted) {
-            setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent));
-          }
+      try {
+        setState(() => _isLoading = true);
+        await _repository.createTimeSlot(startTime: start, endTime: end);
+        _fetchSlots();
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent));
         }
       }
     }
@@ -82,37 +87,73 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dailySlots = _selectedDay != null ? _getSlotsForDay(_selectedDay!) : [];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text('Availability Settings', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18.sp)),
+        title: Text('Availability Calendar', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18.sp)),
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF0F172A),
         elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _addSlot,
-            icon: const Icon(Icons.add_circle_outline, color: Color(0xFF2DD4BF)),
-          ),
-        ],
       ),
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _fetchSlots,
-              child: _slots.isEmpty 
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      padding: EdgeInsets.all(20.w),
-                      itemCount: _slots.length,
-                      itemBuilder: (context, index) => _buildSlotCard(_slots[index]),
+          : Column(
+              children: [
+                Container(
+                  color: Colors.white,
+                  child: TableCalendar(
+                    firstDay: DateTime.now().subtract(const Duration(days: 30)),
+                    lastDay: DateTime.now().add(const Duration(days: 90)),
+                    focusedDay: _focusedDay,
+                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                    onDaySelected: (selectedDay, focusedDay) {
+                      setState(() {
+                        _selectedDay = selectedDay;
+                        _focusedDay = focusedDay;
+                      });
+                    },
+                    eventLoader: _getSlotsForDay,
+                    calendarStyle: CalendarStyle(
+                      todayDecoration: BoxDecoration(color: const Color(0xFF6C63FF).withOpacity(0.3), shape: BoxShape.circle),
+                      selectedDecoration: const BoxDecoration(color: Color(0xFF6C63FF), shape: BoxShape.circle),
+                      markerDecoration: const BoxDecoration(color: Color(0xFF2DD4BF), shape: BoxShape.circle),
                     ),
+                    headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: Row(
+                    children: [
+                      Text(
+                        _selectedDay == null ? 'Select a day' : DateFormat('EEEE, dd MMM').format(_selectedDay!),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16.sp),
+                      ),
+                      const Spacer(),
+                      Text('${dailySlots.length} Slots', style: GoogleFonts.inter(color: Colors.grey, fontSize: 12.sp)),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                Expanded(
+                  child: dailySlots.isEmpty 
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          itemCount: dailySlots.length,
+                          itemBuilder: (context, index) => _buildSlotCard(dailySlots[index]),
+                        ),
+                ),
+              ],
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addSlot,
         backgroundColor: const Color(0xFF0F172A),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: Text('Add Time Slot', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: Text('Add Slot', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -122,17 +163,9 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.calendar_today_outlined, size: 64.sp, color: const Color(0xFFCBD5E1)),
+          Icon(Icons.event_busy, size: 64.sp, color: const Color(0xFFCBD5E1)),
           SizedBox(height: 16.h),
-          Text('No availability set', style: GoogleFonts.inter(color: const Color(0xFF64748B), fontWeight: FontWeight.bold)),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40.w),
-            child: Text(
-              'Set your working hours so patients can book appointments with you.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 12.sp),
-            ),
-          ),
+          Text('No slots for this day', style: GoogleFonts.inter(color: const Color(0xFF64748B), fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -140,7 +173,6 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> {
 
   Widget _buildSlotCard(Map<String, dynamic> item) {
     final start = DateTime.parse(item['start_time']);
-    final dateStr = DateFormat('EEEE, dd MMM').format(start);
     final timeStr = DateFormat('HH:mm').format(start);
     final isReserved = item['is_reserved'] ?? false;
 
@@ -164,13 +196,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> {
           ),
           SizedBox(width: 16.w),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(dateStr, style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 11.sp, fontWeight: FontWeight.bold)),
-                Text(timeStr, style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontSize: 16.sp, fontWeight: FontWeight.bold)),
-              ],
-            ),
+            child: Text(timeStr, style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontSize: 18.sp, fontWeight: FontWeight.bold)),
           ),
           if (isReserved)
             Container(

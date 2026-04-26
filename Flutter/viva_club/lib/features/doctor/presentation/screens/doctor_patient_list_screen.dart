@@ -42,31 +42,42 @@ class _DoctorPatientListScreenState extends State<DoctorPatientListScreen> {
   }
 
   Future<void> _fetchPatients() async {
+    print('🚀 [DEBUG] _fetchPatients CALLED');
     try {
       final apps = await _repository.getMyAppointments();
-      final seen = <int>{};
+      print('🚀 [DEBUG] Received ${apps.length} appointments from API');
+      
+      final seen = <dynamic>{};
       final uniquePatients = <Map<String, dynamic>>[];
       
       for (var app in apps) {
         final patientId = app['patient'];
+        final status = app['status'];
+        final pName = app['patient_display_name'] ?? app['patient_name'];
+        print('🚀 [DEBUG] Item: ID=${app['id']}, PatientID=$patientId, Name=$pName, Status=$status');
+        
         if (patientId != null && !seen.contains(patientId)) {
           seen.add(patientId);
           uniquePatients.add({
             'id': patientId,
-            'name': app['patient_display_name'] ?? 'Anonymous Patient',
+            'name': pName ?? 'Anonymous Patient',
             'lastVisit': app['scheduled_at'],
           });
+          print('🚀 [DEBUG] Added Patient: $pName');
         }
       }
 
+      print('🚀 [DEBUG] Final uniquePatients count: ${uniquePatients.length}');
       if (mounted) {
         setState(() {
           _allPatients = uniquePatients;
           _filteredPatients = uniquePatients;
           _isLoading = false;
         });
+        print('🚀 [DEBUG] UI State Updated');
       }
     } catch (e) {
+      print('❌ [DEBUG] ERROR in _fetchPatients: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }

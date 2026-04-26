@@ -183,7 +183,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                     const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
                     SizedBox(width: 4.w),
                     Text(
-                      doctor['avg_rating']?.toString() ?? '5.0',
+                      (doctor['avg_rating'] as num?)?.toStringAsFixed(1) ?? '5.0',
                       style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(width: 4.w),

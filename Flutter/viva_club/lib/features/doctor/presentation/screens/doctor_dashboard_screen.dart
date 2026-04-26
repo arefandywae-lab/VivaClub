@@ -451,10 +451,17 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   Widget _buildScheduleCard(Map<String, dynamic> item) {
-    final status = item['status'] ?? 'unknown';
-    final isWaiting = status == 'pending' || status == 'confirmed';
-    final timeStr = item['scheduled_at'] != null 
-        ? DateFormat('HH:mm').format(DateTime.parse(item['scheduled_at']))
+    final status = (item['status'] ?? 'unknown').toString().toUpperCase();
+    final isWaiting = status == 'PENDING' || status == 'CONFIRMED';
+    
+    // Fallback for time display
+    String? rawTime = item['scheduled_at'];
+    if (rawTime == null && item['slot_detail'] != null) {
+      rawTime = item['slot_detail']['start_time'];
+    }
+    
+    final timeStr = rawTime != null 
+        ? DateFormat('HH:mm').format(DateTime.parse(rawTime))
         : '--:--';
 
     return Container(

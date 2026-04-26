@@ -24,6 +24,7 @@ class _RoomListScreenState extends State<RoomListScreen>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _sortMode = 'recent'; // 'recent' | 'trending' | 'scheduled'
+  DateTime? _lastNavTime; // Anti-double-navigation lock
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -104,6 +105,20 @@ class _RoomListScreenState extends State<RoomListScreen>
                       context,
                     ).showSnackBar(SnackBar(content: Text(state.message)));
                   } else if (state is RoomJoined && _isJoining) {
+                    // CRITICAL FIX: Only navigate if this screen is currently on top!
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      debugPrint('--- NAVIGATION BLOCKED: SCREEN NOT CURRENT ---');
+                      return;
+                    }
+
+                    final now = DateTime.now();
+                    if (_lastNavTime != null && 
+                        now.difference(_lastNavTime!).inSeconds < 2) {
+                      debugPrint('--- NAVIGATION BLOCKED (STILL IN COOLDOWN) ---');
+                      return;
+                    }
+                    _lastNavTime = now;
+
                     setState(() {
                       _isJoining = false;
                     });

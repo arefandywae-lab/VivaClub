@@ -91,7 +91,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
           TextButton(
             onPressed: () {
               context.pop(); // Close dialog
-              context.go('/clinical/my-appointments'); // Go to appointments to see pending status
+              context.pushReplacement('/clinical/my-appointments'); // Use pushReplacement to fix double back
             },
             child: const Text('Understood', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6C63FF))),
           ),

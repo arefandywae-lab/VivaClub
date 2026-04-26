@@ -16,6 +16,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final _topicController = TextEditingController();
   String _selectedCategory = 'general';
   bool _isSubmitting = false;
+  DateTime? _lastNavTime;
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -248,6 +249,18 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
               child: BlocListener<RoomBloc, RoomState>(
                 listener: (context, state) {
                   if (state is RoomJoined && _isSubmitting) {
+                    // CRITICAL FIX: Only navigate if this screen is currently on top!
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
+
+                    final now = DateTime.now();
+                    if (_lastNavTime != null && 
+                        now.difference(_lastNavTime!).inSeconds < 2) {
+                      return;
+                    }
+                    _lastNavTime = now;
+
                     setState(() {
                       _isSubmitting = false; // Mark as handled
                     });

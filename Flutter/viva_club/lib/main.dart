@@ -18,6 +18,7 @@ import 'features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/services/notification_service.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -30,6 +31,15 @@ void main() async {
     );
     // Initialize notifications and request permission
     await NotificationService().initialize();
+    
+    // Request Microphone and Camera permissions on startup
+    debugPrint('🎙️ PERMISSION: Requesting Mic and Camera...');
+    final statuses = await [
+      Permission.microphone,
+      Permission.camera,
+    ].request();
+    debugPrint('🎙️ PERMISSION STATUS: $statuses');
+    
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');
   }

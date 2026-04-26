@@ -70,7 +70,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
 
       final startTime = DateTime.parse(slotDetail['start_time'].toString());
       final doctor = app['doctor_detail'] ?? {};
-      final status = (app['status'] ?? 'UNKNOWN').toString();
+      final status = (app['status'] ?? 'UNKNOWN').toString().toUpperCase();
       final appId = (app['id'] ?? 'none').toString();
 
       return Container(

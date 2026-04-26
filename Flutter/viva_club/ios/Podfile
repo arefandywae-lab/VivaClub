@@ -46,6 +46,14 @@ post_install do |installer|
       end
       # Force deployment target to 15.0 to match project
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      
+      # Permission Handler Configuration
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+        '$(inherited)',
+        'PERMISSION_MICROPHONE=1',
+        'PERMISSION_CAMERA=1',
+        'PERMISSION_NOTIFICATIONS=1'
+      ]
     end
   end
 end

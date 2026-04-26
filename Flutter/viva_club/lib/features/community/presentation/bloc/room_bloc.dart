@@ -120,6 +120,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       }
 
       debugPrint('RoomCreated & Joined: url=$url');
+      debugPrint('--- BLoC: Emitting RoomJoined for ${event.title} ---');
       emit(
         RoomJoined(
           token: data['token'],
@@ -148,6 +149,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         throw 'LiveKit Token is missing from server response';
       }
 
+      debugPrint('--- BLoC: Emitting RoomJoined (Join) for ${data['title']} ---');
       emit(
         RoomJoined(
           token: token,

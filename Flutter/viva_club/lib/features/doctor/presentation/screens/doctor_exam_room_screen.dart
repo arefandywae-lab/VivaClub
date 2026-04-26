@@ -51,7 +51,22 @@ class _DoctorExamRoomScreenState extends State<DoctorExamRoomScreen> {
   void initState() {
     super.initState();
     _connect();
+    _fetchInitialData();
     _noteController.addListener(_onNoteChanged);
+  }
+
+  Future<void> _fetchInitialData() async {
+    try {
+      final apps = await _repository.getMyAppointments();
+      final app = apps.firstWhere((a) => a['id'].toString() == widget.appointmentId);
+      if (app != null && app['clinical_notes'] != null) {
+        setState(() {
+          _noteController.text = app['clinical_notes'];
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching initial note: $e');
+    }
   }
 
   void _onNoteChanged() {
@@ -147,11 +162,20 @@ class _DoctorExamRoomScreenState extends State<DoctorExamRoomScreen> {
       
       final local = room.localParticipant;
       if (local != null) {
-        await local.setCameraEnabled(true);
-        await local.setMicrophoneEnabled(true);
+        try {
+          await local.setCameraEnabled(true);
+        } catch (e) {
+          debugPrint('📸 Camera not available: $e');
+        }
+        try {
+          await local.setMicrophoneEnabled(true);
+        } catch (e) {
+          debugPrint('🎙️ Mic not available: $e');
+        }
       }
       _onRoomUpdate();
     } catch (e) {
+      debugPrint('📽️ VIDEOCALL ERROR: $e');
       if (mounted) context.pop();
     }
   }
@@ -406,7 +430,14 @@ class _DoctorExamRoomScreenState extends State<DoctorExamRoomScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label.toUpperCase(), style: GoogleFonts.inter(color: const Color(0xFF94A3B8), fontSize: 10.sp, fontWeight: FontWeight.bold)),
-          Text(value, style: GoogleFonts.inter(color: valueColor ?? const Color(0xFF0F172A), fontSize: 14.sp, fontWeight: FontWeight.bold)),
+          SizedBox(width: 16.w),
+          Expanded(
+            child: Text(
+              value, 
+              textAlign: TextAlign.right,
+              style: GoogleFonts.inter(color: valueColor ?? const Color(0xFF0F172A), fontSize: 14.sp, fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
     );
