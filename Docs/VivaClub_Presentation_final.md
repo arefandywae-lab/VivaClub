@@ -23,6 +23,54 @@
 
 ---
 
+# Slide 1.5: เราสร้างจากปัญหาจริง ไม่ใช่จากการเดา
+
+## แนวทาง: Qualitative User Interview
+
+เราไม่ได้ทำแบบสอบถาม Google Form — เราคุยตรงๆ กับคนที่เคยใช้แอปสุขภาพจิตในชีวิตจริง
+
+```
+คุยตรงๆ กับผู้ใช้ Alljit
+      ↓
+ฟัง pain point — ไม่ตัดสิน ไม่นำ
+      ↓
+เอาปัญหานั้นไปสร้าง feature ทันที
+      ↓
+ให้คนกลุ่มเดิมมาลองใช้ VivaClub
+      ↓
+ฟัง feedback รอบสอง — แก้ต่อ
+```
+
+**ทำไมไม่ใช้ Google Form?**
+Form ถามได้แค่ "คะแนน 1-5" แต่เราอยากรู้ว่า *"รู้สึกยังไงตอนที่เปิดแอปแล้วคนรู้จักเห็น?"*
+คำตอบแบบนั้นได้จากการคุยเท่านั้น
+
+---
+
+## สิ่งที่ได้ยิน → สิ่งที่เราสร้าง
+
+| สิ่งที่ผู้ใช้พูด (Alljit) | ปัญหาจริงคืออะไร | VivaClub ตอบยังไง |
+|--------------------------|-----------------|------------------|
+| *"กลัวเพื่อนเห็นว่าเราใช้แอปพวกนี้"* | Stigma — ไม่มี anonymity | Ghost Profile ชื่อสุ่ม ไม่มีรูปจริง |
+| *"คิวรอหมอเป็นอาทิตย์ แต่ตอนนั้นเครียดมาก"* | Emergency ไม่มีช่องทางด่วน | SOS Queue — หมอเวรรับทันที |
+| *"มีแต่บทความ รู้สึกคุยกับกำแพง"* | Passive — ไม่มี real interaction | Audio Room — พูดคุยสดกับคนอื่นได้ |
+| *"ไม่รู้ว่าหมอที่แอปเลือกให้น่าเชื่อถือไหม"* | Transparency ต่ำ | Verified badge + rating + รีวิวจริง |
+| *"กังวลว่าที่คุยกับหมอจะถูกเก็บไว้"* | ความไว้ใจเรื่อง privacy | E2EE — server ไม่เคยเห็น plaintext |
+
+---
+
+## หลังให้ใช้ VivaClub — สิ่งที่ได้ยินรอบสอง
+
+> *"ชื่อที่สุ่มมาให้มันทำให้รู้สึกว่ากล้าเข้าใช้ขึ้นมาก ไม่ต้องคิดเองด้วย"*
+
+> *"ปุ่ม SOS มันทำให้รู้สึกว่ามีคนรอรับอยู่จริงๆ ต่างจากที่เคยใช้มาก"*
+
+> *"UI กดแล้วรู้ว่าจะไปไหน ไม่ต้องงมหา"*
+
+**สิ่งที่สำคัญ:** คนกลุ่มเดิมที่บอกว่า Alljit แก้ปัญหาไม่ได้ — บอกว่า VivaClub แก้ได้
+
+---
+
 # Slide 2: สิ่งที่เพิ่มหลัง Mid-term
 
 ## ก้อนที่ 1 — Doctor Side (ไม่มีเลยตอน Mid)
@@ -98,7 +146,6 @@ Docker Compose ─── web (Django)
 
 ### สาเหตุ: Path MTU Blackhole
 
-```
 LiveKit ส่งเสียงด้วย UDP
 UDP packet ขนาด 1500 bytes (default MTU)
 
@@ -108,7 +155,7 @@ AIS Carrier   → MTU ต่ำกว่า 1500 → packet ใหญ่เก�
                → Carrier DROP packet ทิ้ง
                → UDP ไม่มี retransmit
                → เงียบสนิท ❌
-```
+
 
 **ทำไม debug ยาก:**
 - UDP ไม่มี acknowledgment — ไม่รู้ว่า packet หาย
@@ -119,7 +166,7 @@ AIS Carrier   → MTU ต่ำกว่า 1500 → packet ใหญ่เก�
 
 ### วิธีแก้: TURN over TCP Port 443
 
-```
+
 Before (UDP ตรง):
   Phone ──── UDP 7882 ────→ LiveKit Server
               ↑ carrier DROP
@@ -127,7 +174,7 @@ Before (UDP ตรง):
 After (TURN Relay TCP):
   Phone ──── TCP 443 ────→ Caddy ──→ TURN Server ──→ LiveKit
               ↑ carrier ไม่กล้าบล็อก HTTPS port
-```
+
 
 **ทำไม Port 443 ถึงรอด?**
 - Port 443 = HTTPS — carrier บล็อกไม่ได้ (internet จะพัง)
@@ -136,8 +183,8 @@ After (TURN Relay TCP):
 
 **Config ที่แก้:**
 
-```yaml
-# livekit.yaml
+livekit.yaml
+
 rtc:
   turn_enabled: true
   turn_servers:
@@ -147,7 +194,7 @@ rtc:
   force_turn: false        # fallback อัตโนมัติ ไม่บังคับ
   ice_candidate_filter:
     kinds: [host, srflx, relay]
-```
+
 
 **ผลลัพธ์:**
 
@@ -176,16 +223,16 @@ rtc:
 **อาการ:** Bot ที่ generate เสียงแบบ programmatic — กระตุกทุก ~30 วินาที
 
 **สาเหตุ:**
-```python
+
 # ❌ วิธีเดิม — asyncio.sleep drift
 while True:
     play_audio_chunk()
     await asyncio.sleep(0.02)  # ควรเป็น 20ms แต่จริงๆ drift ออกไปเรื่อยๆ
 # หลัง 30 วินาที drift สะสม → เสียงสะดุด
-```
+
 
 **แก้ด้วย monotonic clock:**
-```python
+
 # ✅ วิธีใหม่ — drift-corrected timing
 next_time = time.monotonic()
 while True:
@@ -195,7 +242,7 @@ while True:
     if sleep_duration > 0:
         await asyncio.sleep(sleep_duration)
 # drift ถูก correct ทุก loop → เสียงราบเรียบ
-```
+
 
 ---
 
@@ -206,7 +253,7 @@ while True:
 **สาเหตุ:** Flutter ไม่รู้ว่า status เปลี่ยน — ไม่มี listener
 
 **แก้:**
-```dart
+
 // เพิ่ม polling ทุก 5 วินาที
 Timer.periodic(const Duration(seconds: 5), (timer) async {
   final position = await repository.getMySOSPosition();
@@ -216,7 +263,7 @@ Timer.periodic(const Duration(seconds: 5), (timer) async {
     context.go('/video-call/${position.roomToken}');
   }
 });
-```
+
 
 ---
 
@@ -227,13 +274,13 @@ Timer.periodic(const Duration(seconds: 5), (timer) async {
 **สาเหตุ:** LiveKit ส่งแค่ `username` ไม่มี `ghost_id` → Flutter ต้อง extra API call → race condition
 
 **แก้:** ฝัง `ghost_id` ใน LiveKit participant metadata ตั้งแต่ต้น:
-```json
+
 {
   "ghost_id": "550e8400-...",
   "display_name": "Happy Panda #42",
   "role": "listener"
 }
-```
+
 Flutter อ่าน metadata ได้เลย ไม่ต้อง API call เพิ่ม
 
 ---
@@ -242,7 +289,7 @@ Flutter อ่าน metadata ได้เลย ไม่ต้อง API call 
 
 ## Stress Test Results
 
-```
+
 ╔══════════════════════════════════════════════╗
 ║           STRESS TEST — vivaclubs.site        ║
 ╠══════════════════════════════════════════════╣
@@ -254,7 +301,7 @@ Flutter อ่าน metadata ได้เลย ไม่ต้อง API call 
 ║  API Response Time: < 200ms avg              ║
 ║  Database Integrity: 100% maintained         ║
 ╚══════════════════════════════════════════════╝
-```
+
 
 ## ขนาดโปรเจกต์
 

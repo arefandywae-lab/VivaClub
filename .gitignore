@@ -42,3 +42,6 @@ Docs/Problem&Progress report/architecture-mapping-d2.png
 Docs/Problem&Progress report/green.md
 Docs/Problem&Progress report/progess.md
 Docs/Archive/progess.md
+*.zip
+viva_remote.sh
+Server/vps_manage.sh
